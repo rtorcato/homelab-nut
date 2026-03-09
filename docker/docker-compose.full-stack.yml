@@ -1,0 +1,102 @@
+# NUT Full Monitoring Stack
+# Includes: NUT Server, Web UI, Prometheus, Grafana
+#
+# Copy .env.example to .env and configure before starting
+
+services:
+  # NUT Server
+  nut-server:
+    image: instantlinux/nut-upsd:latest
+    container_name: nut-server
+    hostname: nut-server
+    restart: unless-stopped
+    ports:
+      - "${NUT_PORT:-3493}:3493"
+    environment:
+      - NAME=${UPS_NAME:-myups}
+      - DRIVER=${UPS_DRIVER:-usbhid-ups}
+      - PORT=auto
+      - DESCRIPTION=${UPS_DESCRIPTION:-My UPS}
+      - SERVER=master
+      - API_USER=${NUT_API_USER:-upsmon}
+      - API_PASSWORD=${NUT_API_PASSWORD:?Set NUT_API_PASSWORD in .env}
+      - SECRET=${NUT_ADMIN_PASSWORD:?Set NUT_ADMIN_PASSWORD in .env}
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    privileged: true
+    healthcheck:
+      test: ["CMD", "upsc", "${UPS_NAME:-myups}@localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web UI
+  webnut:
+    image: teknologist/webnut:latest
+    container_name: webnut
+    restart: unless-stopped
+    ports:
+      - "${WEBNUT_PORT:-6543}:6543"
+    environment:
+      - UPS_HOST=nut-server
+      - UPS_PORT=3493
+    depends_on:
+      nut-server:
+        condition: service_healthy
+
+  # Prometheus Exporter
+  nut-exporter:
+    image: druggeri/nut_exporter:latest
+    container_name: nut-exporter
+    restart: unless-stopped
+    expose:
+      - "9199"
+    command:
+      - "--nut.server=nut-server"
+    depends_on:
+      nut-server:
+        condition: service_healthy
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - nut-exporter
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: nut-monitoring

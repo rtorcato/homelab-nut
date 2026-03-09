@@ -1,0 +1,10 @@
+# Environment files (contain secrets)
+.env
+!.env.example
+
+# Docker volumes
+prometheus_data/
+grafana_data/
+
+# Logs
+*.log

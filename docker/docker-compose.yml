@@ -1,0 +1,62 @@
+# NUT Server + Web UI + Prometheus Exporter
+# Full monitoring stack for homelab UPS
+#
+# Copy .env.example to .env and configure before starting
+
+services:
+  # NUT Server - connects to UPS via USB
+  nut-server:
+    image: instantlinux/nut-upsd:latest
+    container_name: nut-server
+    hostname: nut-server
+    restart: unless-stopped
+    ports:
+      - "${NUT_PORT:-3493}:3493"
+    environment:
+      - NAME=${UPS_NAME:-myups}
+      - DRIVER=${UPS_DRIVER:-usbhid-ups}
+      - PORT=auto
+      - DESCRIPTION=${UPS_DESCRIPTION:-My UPS}
+      - SERVER=master
+      - API_USER=${NUT_API_USER:-upsmon}
+      - API_PASSWORD=${NUT_API_PASSWORD:?Set NUT_API_PASSWORD in .env}
+      - SECRET=${NUT_ADMIN_PASSWORD:?Set NUT_ADMIN_PASSWORD in .env}
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    privileged: true
+    healthcheck:
+      test: ["CMD", "upsc", "${UPS_NAME:-myups}@localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web UI for UPS monitoring
+  webnut:
+    image: teknologist/webnut:latest
+    container_name: webnut
+    restart: unless-stopped
+    ports:
+      - "${WEBNUT_PORT:-6543}:6543"
+    environment:
+      - UPS_HOST=nut-server
+      - UPS_PORT=3493
+    depends_on:
+      nut-server:
+        condition: service_healthy
+
+  # Prometheus exporter for metrics
+  nut-exporter:
+    image: druggeri/nut_exporter:latest
+    container_name: nut-exporter
+    restart: unless-stopped
+    ports:
+      - "${NUT_EXPORTER_PORT:-9199}:9199"
+    command:
+      - "--nut.server=nut-server"
+    depends_on:
+      nut-server:
+        condition: service_healthy
+
+networks:
+  default:
+    name: nut-network
