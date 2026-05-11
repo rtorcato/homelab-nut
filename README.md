@@ -51,28 +51,27 @@ sudo ./scripts/setup-client.sh 192.168.1.10 myups secretpassword
 
 ### Option 2: Docker monitoring on top of bare-metal NUT
 
-The Docker stack is designed to run **alongside** a bare-metal `nut-server`
-(it does not run its own copy of `nut-server` to avoid USB/port conflicts).
+The Docker stack runs **alongside** a bare-metal `nut-server` (it does not
+run its own copy of `nut-server` to avoid USB/port conflicts). Two services:
+
+- `nut-exporter` — Prometheus metrics endpoint (scrape from a remote Prometheus)
+- `nut-webgui` — web UI for the UPS
+
+Prometheus and Grafana are intentionally not included — host them elsewhere
+and point them at this host's `nut-exporter`.
+
 Set up bare-metal NUT first with `setup-server.sh`, then:
 
 ```bash
 cd docker
 cp .env.example .env
-# Edit .env: set NUT_API_PASSWORD (from /root/nut-credentials.txt on the host)
-# and GRAFANA_ADMIN_PASSWORD if you'll use the full stack.
-
-# Minimal: nut-webgui + Prometheus exporter (for a remote Prometheus to scrape)
+# Edit .env: set NUT_API_PASSWORD from /root/nut-credentials.txt on the host
 docker compose up -d
-
-# Full stack: above + local Prometheus + Grafana (for testing)
-docker compose -f docker-compose.full-stack.yml up -d
 ```
 
 Access:
 - **Web UI** (nut-webgui): http://localhost:9000
 - **Prometheus exporter**: http://localhost:9199/ups_metrics
-- **Grafana** (full stack only): http://localhost:3000
-- **Prometheus** (full stack only): http://localhost:9090
 
 ### Option 3: Manual Server Setup
 
@@ -126,13 +125,8 @@ homelab-nut/
 │   ├── notifications.md     # Alert configuration
 │   └── smart-shutdown.md    # Device shutdown automation
 ├── docker/
-│   ├── docker-compose.yml            # nut-webgui + Prometheus exporter
-│   ├── docker-compose.full-stack.yml # + local Prometheus + Grafana
-│   ├── .env.example                  # Environment template
-│   ├── prometheus/
-│   │   └── prometheus.yml
-│   └── grafana/
-│       └── provisioning/
+│   ├── compose.yml                   # nut-webgui + Prometheus exporter
+│   └── .env.example                  # Environment template
 └── scripts/
     ├── setup-server.sh      # Automated server setup
     ├── setup-client.sh      # Automated client setup

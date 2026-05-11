@@ -1,9 +1,11 @@
-# NUT Minimal Stack (Path A)
-# Publishes the NUT Prometheus exporter so a remote Prometheus/Grafana
-# can scrape UPS metrics from this host.
+# NUT Docker Stack (Path A)
+# - nut-exporter: publishes Prometheus metrics for a remote Prometheus to scrape
+# - nut-webgui:   browser UI for the UPS
 #
 # The UPS itself is managed by the bare-metal nut-server on the Docker host
 # (see scripts/setup-server.sh). This compose file does NOT run nut-server.
+# Prometheus and Grafana are intentionally not included — host them elsewhere
+# and point them at this host's nut-exporter on NUT_EXPORTER_PORT.
 #
 # Copy .env.example to .env and configure before starting.
 name: nut-stack
