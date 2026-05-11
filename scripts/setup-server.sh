@@ -70,6 +70,14 @@ if command -v lsusb &> /dev/null; then
     lsusb | grep -i ups || log_warn "No UPS detected via USB. Please check connection."
 fi
 
+# Back up any existing NUT config so re-runs don't silently destroy customizations
+if compgen -G "/etc/nut/*.conf" > /dev/null; then
+    BACKUP_DIR="/etc/nut/backup-$(date +%Y%m%d-%H%M%S)"
+    log_info "Backing up existing /etc/nut/*.conf to $BACKUP_DIR"
+    mkdir -p "$BACKUP_DIR"
+    cp -a /etc/nut/*.conf "$BACKUP_DIR/" 2>/dev/null || true
+fi
+
 # Create nut.conf
 log_info "Configuring NUT mode..."
 cat > /etc/nut/nut.conf << EOF
@@ -162,13 +170,31 @@ chmod 640 /etc/nut/upsd.users
 
 # Start services
 log_info "Starting NUT services..."
+
+# Stop any previously-running NUT services so they don't keep stale config
+systemctl stop nut-monitor 2>/dev/null || true
+systemctl stop nut-server 2>/dev/null || true
+systemctl stop 'nut-driver@*' 2>/dev/null || true
+systemctl stop nut-driver 2>/dev/null || true
+
 systemctl daemon-reload
-systemctl enable nut-driver nut-server nut-monitor
-systemctl restart nut-driver
+
+# NUT 2.8+ (Ubuntu 24.04, Debian 12+) uses instanced nut-driver@<ups>.service
+# units managed by nut-driver-enumerator.service. Older NUT uses a single
+# nut-driver.service.
+if systemctl list-unit-files | grep -q '^nut-driver-enumerator\.service'; then
+    log_info "Detected modern NUT (instanced drivers via nut-driver-enumerator)"
+    systemctl enable nut-driver-enumerator.service nut-server.service nut-monitor.service
+    systemctl restart nut-driver-enumerator.service
+else
+    log_info "Detected legacy NUT (single nut-driver.service)"
+    systemctl enable nut-driver.service nut-server.service nut-monitor.service
+    systemctl restart nut-driver.service
+fi
 sleep 2
-systemctl restart nut-server
+systemctl restart nut-server.service
 sleep 2
-systemctl restart nut-monitor
+systemctl restart nut-monitor.service
 
 # Test connection
 log_info "Testing UPS connection..."
