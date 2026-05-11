@@ -126,12 +126,12 @@ cat > /etc/nut/upsd.users << EOF
 # Local monitor user
 [$MONITOR_USER]
     password = $MONITOR_PASS
-    upsmon master
+    upsmon primary
 
 # Remote client user
 [upsmon_remote]
     password = $REMOTE_PASS
-    upsmon slave
+    upsmon secondary
 EOF
 
 # Create upsmon.conf
@@ -139,7 +139,7 @@ log_info "Configuring UPS monitor..."
 cat > /etc/nut/upsmon.conf << EOF
 # UPS Monitor Configuration
 
-MONITOR $UPS_NAME@localhost 1 $MONITOR_USER $MONITOR_PASS master
+MONITOR $UPS_NAME@localhost 1 $MONITOR_USER $MONITOR_PASS primary
 
 MINSUPPLIES 1
 SHUTDOWNCMD "/sbin/shutdown -h +0"

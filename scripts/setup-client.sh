@@ -91,7 +91,7 @@ cat > /etc/nut/upsmon.conf << EOF
 # UPS Monitor Configuration (Client Mode)
 # Monitors remote NUT server
 
-MONITOR $UPS_NAME@$SERVER_IP 1 $REMOTE_USER $PASSWORD slave
+MONITOR $UPS_NAME@$SERVER_IP 1 $REMOTE_USER $PASSWORD secondary
 
 MINSUPPLIES 1
 SHUTDOWNCMD "/sbin/shutdown -h +0"

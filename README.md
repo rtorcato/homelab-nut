@@ -49,22 +49,30 @@ sudo ./scripts/setup-client.sh 192.168.1.10 myups secretpassword
 ./scripts/ups-status.sh myups@localhost
 ```
 
-### Option 2: Docker (Recommended)
+### Option 2: Docker monitoring on top of bare-metal NUT
+
+The Docker stack is designed to run **alongside** a bare-metal `nut-server`
+(it does not run its own copy of `nut-server` to avoid USB/port conflicts).
+Set up bare-metal NUT first with `setup-server.sh`, then:
 
 ```bash
 cd docker
+cp .env.example .env
+# Edit .env: set NUT_API_PASSWORD (from /root/nut-credentials.txt on the host)
+# and GRAFANA_ADMIN_PASSWORD if you'll use the full stack.
 
-# Basic setup with web UI
-docker-compose up -d
+# Minimal: nut-webgui + Prometheus exporter (for a remote Prometheus to scrape)
+docker compose up -d
 
-# Full stack with Prometheus + Grafana
-docker-compose -f docker-compose.full-stack.yml up -d
+# Full stack: above + local Prometheus + Grafana (for testing)
+docker compose -f docker-compose.full-stack.yml up -d
 ```
 
 Access:
-- **Web UI**: http://localhost:6543
-- **Grafana**: http://localhost:3000 (admin/admin)
-- **Prometheus**: http://localhost:9090
+- **Web UI** (nut-webgui): http://localhost:9000
+- **Prometheus exporter**: http://localhost:9199/ups_metrics
+- **Grafana** (full stack only): http://localhost:3000
+- **Prometheus** (full stack only): http://localhost:9090
 
 ### Option 3: Manual Server Setup
 
@@ -118,8 +126,8 @@ homelab-nut/
 │   ├── notifications.md     # Alert configuration
 │   └── smart-shutdown.md    # Device shutdown automation
 ├── docker/
-│   ├── docker-compose.yml           # Basic NUT + Web UI
-│   ├── docker-compose.full-stack.yml # Full monitoring stack
+│   ├── docker-compose.yml            # nut-webgui + Prometheus exporter
+│   ├── docker-compose.full-stack.yml # + local Prometheus + Grafana
 │   ├── .env.example                  # Environment template
 │   ├── prometheus/
 │   │   └── prometheus.yml
@@ -136,26 +144,9 @@ homelab-nut/
 - [NUT Official Documentation](https://networkupstools.org/docs/user-manual.chunked/index.html)
 - [NUT Hardware Compatibility List](https://networkupstools.org/stable-hcl.html)
 - [NUT GitHub Repository](https://github.com/networkupstools/nut)
+- [nut-webgui (web UI used by the Docker stack)](https://github.com/SuperioOne/nut_webgui)
+- [druggeri/nut_exporter (Prometheus exporter)](https://github.com/DRuggeri/nut_exporter)
 
 ## License
 
-This documentation is provided under the MIT License.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+MIT

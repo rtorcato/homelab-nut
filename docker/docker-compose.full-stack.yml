@@ -19,6 +19,21 @@ services:
       # Map host.docker.internal to the Docker host gateway on Linux
       - "host.docker.internal:host-gateway"
 
+  # Web UI for the bare-metal NUT server (replaces deprecated webnut).
+  # https://github.com/SuperioOne/nut_webgui
+  nut-webgui:
+    image: ghcr.io/superioone/nut_webgui:latest
+    container_name: nut-webgui
+    restart: unless-stopped
+    ports:
+      - "${NUT_WEBGUI_PORT:-9000}:9000"
+    environment:
+      - UPSD_ADDR=${NUT_HOST:-host.docker.internal}
+      - UPSD_USER=${NUT_API_USER:-upsmon}
+      - UPSD_PASS=${NUT_API_PASSWORD:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   # Prometheus
   prometheus:
     image: prom/prometheus:latest
