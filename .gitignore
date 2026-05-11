@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+._*
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Secrets and credentials
+.env
+.env.local
+*.env
+!*.env.example
+nut-credentials.txt
+secrets/
+
+# Backups created by setup scripts
+backup-*/
+*.bak
+*.orig
+
+# Logs
+*.log
