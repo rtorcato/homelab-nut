@@ -24,8 +24,10 @@ services:
       # Map host.docker.internal to the Docker host gateway on Linux
       - "host.docker.internal:host-gateway"
 
-  # Web UI for the bare-metal NUT server (replaces deprecated webnut).
+  # Web UI for the bare-metal NUT server(s) — supports multiple upstream upsd
+  # instances via a TOML config file (env-var config is single-server only).
   # https://github.com/SuperioOne/nut_webgui
+  # Copy nut-webgui.toml.example to nut-webgui.toml and edit addresses/creds.
   nut-webgui:
     image: ghcr.io/superioone/nut_webgui:latest
     container_name: nut-webgui
@@ -33,9 +35,9 @@ services:
     ports:
       - "${NUT_WEBGUI_PORT:-9000}:9000"
     environment:
-      - UPSD_ADDR=${NUT_HOST:-host.docker.internal}
-      - UPSD_USER=${NUT_API_USER:-upsmon}
-      - UPSD_PASS=${NUT_API_PASSWORD:-}
+      - NUTWG__CONFIG_FILE=/etc/nut_webgui/config.toml
+    volumes:
+      - ./nut-webgui.toml:/etc/nut_webgui/config.toml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

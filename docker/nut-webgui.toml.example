@@ -1,0 +1,32 @@
+version = "1"
+log_level = "info"
+
+[http_server]
+listen = "0.0.0.0"
+port = 9000
+
+# Local bare-metal nut-server on the Docker host.
+# host.docker.internal is mapped to the host gateway by extra_hosts in compose.yml.
+[upsd.local]
+address = "host.docker.internal"
+port = 3493
+poll_freq = 30
+poll_interval = 2
+max_connection = 4
+tls_mode = "disable"
+# Uncomment if the local upsd requires auth for reads:
+# username = "upsmon"
+# password = "changeme_monitor_password"
+
+# Remote nut-server (Raspberry Pi with APC UPS).
+# Change address to the Pi's LAN IP.
+[upsd.pi]
+address = "192.0.2.10"
+port = 3493
+poll_freq = 30
+poll_interval = 2
+max_connection = 4
+tls_mode = "disable"
+# Uncomment if the Pi's upsd requires auth for reads:
+# username = "upsmon"
+# password = "changeme_pi_monitor_password"
