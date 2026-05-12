@@ -34,6 +34,16 @@ NUT allows you to:
 | [Notifications](docs/notifications.md) | Slack, Discord, Pushover, Telegram alerts |
 | [Smart Shutdown](docs/smart-shutdown.md) | Shutdown UniFi, LG TVs, NAS via Home Assistant |
 
+### Prometheus exporter, two ways
+
+The Prometheus exporter (`druggeri/nut_exporter`) can run either inside the
+Docker stack (Option 2 below) or as a bare-metal systemd service (Option 4).
+Both expose the same metrics on the same port — pick whichever fits the host:
+
+- **Docker** when the host already runs Docker / Compose for other services.
+- **Bare-metal** for low-resource hosts where Docker overhead matters
+  (Pi Zero, Pi Zero 2 W, OpenWrt boxes, etc.).
+
 ## Quick Start
 
 ### Option 1: Automated Setup Scripts
@@ -73,7 +83,37 @@ Access:
 - **Web UI** (nut-webgui): http://localhost:9000
 - **Prometheus exporter**: http://localhost:9199/ups_metrics
 
-### Option 3: Manual Server Setup
+### Option 3: Bare-metal Prometheus exporter (no Docker)
+
+For low-resource hosts (Pi Zero, Pi Zero 2 W) where Docker is overkill, install
+the same `druggeri/nut_exporter` binary as a systemd service:
+
+```bash
+# Defaults: scrape localhost, no auth, listen on :9199
+sudo ./scripts/setup-exporter.sh
+
+# Remote NUT server with auth (use the upsmon_remote password from
+# /root/nut-credentials.txt on the NUT server)
+sudo ./scripts/setup-exporter.sh 192.168.1.10 upsmon_remote <password>
+```
+
+The script auto-detects architecture (`amd64`, `arm64`, `arm`, `386`) and pulls
+the latest release from GitHub. Pin a version with `NUT_EXPORTER_VERSION=v3.2.5`
+or change the listen port with `NUT_EXPORTER_PORT=9199`.
+
+Credentials live in `/etc/default/nut-exporter` (mode 0640) and the service
+runs as a dedicated unprivileged `nut-exporter` user under hardened systemd
+sandboxing (`ProtectSystem=strict`, `NoNewPrivileges`, etc.).
+
+To check status from any machine without installing NUT or `upsc`:
+
+```bash
+./scripts/exporter-status.sh http://192.0.2.10:9199 myups
+./scripts/exporter-status.sh http://192.0.2.10:9199 myups --json   # machine-readable
+./scripts/exporter-status.sh http://192.0.2.10:9199 myups --raw    # all metrics
+```
+
+### Option 4: Manual Server Setup
 
 ```bash
 # Install NUT
@@ -128,9 +168,11 @@ homelab-nut/
 │   ├── compose.yml                   # nut-webgui + Prometheus exporter
 │   └── .env.example                  # Environment template
 └── scripts/
-    ├── setup-server.sh      # Automated server setup
-    ├── setup-client.sh      # Automated client setup
-    └── ups-status.sh        # Status check script
+    ├── setup-server.sh        # Automated NUT server setup
+    ├── setup-client.sh        # Automated NUT client setup
+    ├── setup-exporter.sh      # Bare-metal nut_exporter (no Docker)
+    ├── ups-status.sh          # Status check via local `upsc`
+    └── exporter-status.sh     # Status check via nut_exporter HTTP
 ```
 
 ## Resources
