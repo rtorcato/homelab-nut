@@ -16,7 +16,7 @@
 # Environment overrides:
 #   NUT_EXPORTER_VERSION   pin a release (default: latest from GitHub)
 #   NUT_EXPORTER_PORT      listen port (default: 9199)
-#   NUT_EXPORTER_ARCH      override arch detection (amd64|arm64|armv7|armv6)
+#   NUT_EXPORTER_ARCH      override arch detection (amd64|arm64|arm|386)
 #
 
 set -euo pipefail
@@ -55,11 +55,13 @@ detect_arch() {
     fi
     local m
     m=$(uname -m)
+    # Upstream publishes linux-{amd64,arm64,arm,386}. A single "arm" build
+    # covers both armv6 (Pi Zero / Zero W) and armv7 (Pi 2/3 32-bit).
     case "$m" in
-        x86_64|amd64)   echo "amd64" ;;
-        aarch64|arm64)  echo "arm64" ;;
-        armv7l)         echo "armv7" ;;
-        armv6l)         echo "armv6" ;;
+        x86_64|amd64)         echo "amd64" ;;
+        aarch64|arm64)        echo "arm64" ;;
+        armv6l|armv7l|arm)    echo "arm" ;;
+        i386|i686)            echo "386" ;;
         *)
             log_error "Unsupported architecture: $m (set NUT_EXPORTER_ARCH to override)"
             exit 1
@@ -71,7 +73,7 @@ ARCH=$(detect_arch)
 log_info "Detected architecture: $ARCH"
 
 # Required tools
-for cmd in curl tar; do
+for cmd in curl; do
     if ! command -v $cmd &>/dev/null; then
         log_info "Installing missing dependency: $cmd"
         if command -v apt-get &>/dev/null; then
@@ -98,38 +100,35 @@ if [[ -z "$VERSION" ]]; then
         exit 1
     fi
 fi
-# Strip leading 'v' if present
-VERSION_NUM="${VERSION#v}"
+# Normalize: tag has 'v' prefix, asset filename keeps it, display strips it
+VERSION_TAG="${VERSION#v}"   # 3.2.5
+VERSION_TAG="v${VERSION_TAG}" # v3.2.5
+VERSION_NUM="${VERSION_TAG#v}"
 log_info "Installing nut_exporter ${VERSION_NUM}"
 
-# Pick asset matching arch. Upstream uses goreleaser with names like:
-#   nut_exporter-1.7.1.linux-amd64.tar.gz
-#   nut_exporter-1.7.1.linux-arm64.tar.gz
-#   nut_exporter-1.7.1.linux-armv6.tar.gz
-ASSET="nut_exporter-${VERSION_NUM}.linux-${ARCH}.tar.gz"
-URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
+# Upstream publishes raw binaries named:
+#   nut_exporter-v3.2.5-linux-amd64
+#   nut_exporter-v3.2.5-linux-arm64
+#   nut_exporter-v3.2.5-linux-arm
+ASSET="nut_exporter-${VERSION_TAG}-linux-${ARCH}"
+URL="https://github.com/${REPO}/releases/download/${VERSION_TAG}/${ASSET}"
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 log_info "Downloading ${URL}"
-if ! curl -fsSL -o "${TMPDIR}/${ASSET}" "$URL"; then
+if ! curl -fsSL -o "${TMPDIR}/nut_exporter" "$URL"; then
     log_error "Download failed. Asset may not exist for arch '${ARCH}'."
-    log_error "Check available assets at https://github.com/${REPO}/releases/tag/${VERSION}"
+    log_error "Check available assets at https://github.com/${REPO}/releases/tag/${VERSION_TAG}"
     exit 1
 fi
 
-log_info "Extracting binary..."
-tar -xzf "${TMPDIR}/${ASSET}" -C "$TMPDIR"
+EXTRACTED_BIN="${TMPDIR}/nut_exporter"
+chmod +x "$EXTRACTED_BIN"
 
-# Locate the binary (release layout has historically varied)
-EXTRACTED_BIN=$(find "$TMPDIR" -type f -name 'nut_exporter' -perm -u+x | head -1)
-if [[ -z "$EXTRACTED_BIN" ]]; then
-    EXTRACTED_BIN=$(find "$TMPDIR" -type f -name 'nut_exporter' | head -1)
-fi
-if [[ -z "$EXTRACTED_BIN" ]]; then
-    log_error "Could not find nut_exporter binary inside ${ASSET}"
-    exit 1
+# Sanity-check it's a binary we can run on this arch
+if ! "$EXTRACTED_BIN" --version >/dev/null 2>&1; then
+    log_warn "Downloaded binary did not respond to --version (may still work)"
 fi
 
 # Stop existing service before replacing the binary
