@@ -49,21 +49,22 @@ done
 
 if [ -t 1 ]; then
     RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-    CYAN='\033[0;36m'; DIM='\033[2m'; NC='\033[0m'
+    CYAN='\033[0;36m'; DIM='\033[2m'; BOLD='\033[1m'; NC='\033[0m'
 else
-    RED='' GREEN='' YELLOW='' CYAN='' DIM='' NC=''
+    RED='' GREEN='' YELLOW='' CYAN='' DIM='' BOLD='' NC=''
 fi
 
 err()  { echo -e "${RED}Error:${NC} $*" >&2; }
-info() { echo -e "${CYAN}»${NC} $*"; }
-ok()   { echo -e "${GREEN}✓${NC} $*"; }
 warn() { echo -e "${YELLOW}!${NC} $*"; }
+ok()   { echo -e "${GREEN}✓${NC} $*"; }
+info() { echo -e "${CYAN}»${NC} $*"; }
+line() { printf "  ${CYAN}%-14s${NC} %b\n" "$1" "$2"; }
+section() { echo; echo -e "${CYAN}─ $* ─${NC}"; }
 
 print_hints() {
     local s
     s=$(basename "$0")
-    echo
-    echo -e "${CYAN}─ Options ─${NC}"
+    section "Options"
     echo -e "  ${DIM}$s [UPS]            target a local UPS (default: auto-discover)${NC}"
     echo -e "  ${DIM}$s --quick          start quick battery test (default)${NC}"
     echo -e "  ${DIM}$s --deep           start deep battery test${NC}"
@@ -108,30 +109,51 @@ if [ -z "$UPS" ]; then
     fi
 fi
 TARGET="${UPS}@localhost"
+MODEL=$(upsc "$TARGET" ups.model 2>/dev/null || echo "unknown")
+MFR=$(upsc "$TARGET" ups.mfr 2>/dev/null || true)
 
-# --- read-only branches first -----------------------------------------------
+# --- read-only branches -----------------------------------------------------
 
 if [ "$ACTION" = "list" ]; then
-    info "INSTCMDs supported by $TARGET:"
-    upscmd -l "$TARGET"
+    section "UPS"
+    line "Target:" "$TARGET"
+    [ -n "$MFR$MODEL" ] && line "Model:" "$MFR $MODEL"
+    section "Supported Commands"
+    # Parse upscmd -l output: "cmd - description" format
+    upscmd -l "$TARGET" 2>/dev/null | grep -v '^Instant' | grep ' - ' | \
+        while IFS=' - ' read -r cmd desc; do
+            printf "  ${CYAN}%-38s${NC} ${DIM}%s${NC}\n" "${cmd// /}" "$desc"
+        done
     print_hints
     exit 0
 fi
 
 if [ "$ACTION" = "status" ]; then
     RESULT=$(upsc "$TARGET" ups.test.result 2>/dev/null || true)
+    section "UPS"
+    line "Target:" "$TARGET"
+    [ -n "$MFR$MODEL" ] && line "Model:" "$MFR $MODEL"
+    section "Last Test Result"
     if [ -z "$RESULT" ]; then
-        warn "No test result reported by $TARGET (ups.test.result is empty or unsupported)."
+        warn "No result available (ups.test.result is empty or unsupported)."
     else
-        echo -e "Last test result: ${GREEN}${RESULT}${NC}"
+        case "${RESULT,,}" in
+            *"done and passed"*|*ok*|*passed*)
+                echo -e "  ${GREEN}${BOLD}${RESULT}${NC}" ;;
+            *"in progress"*|*pending*)
+                echo -e "  ${YELLOW}${RESULT}${NC}" ;;
+            *failed*|*aborted*|*error*|*bad*)
+                echo -e "  ${RED}${RESULT}${NC}" ;;
+            *)
+                echo -e "  ${RESULT}" ;;
+        esac
     fi
     print_hints
     exit 0
 fi
 
-# --- write branches: need credentials ---------------------------------------
+# --- write branches: need credentials ----------------------------------------
 
-# Pull credentials from env, then nut-credentials.txt (root only), then prompt.
 NUT_USER="${NUT_USER:-}"
 NUT_PASS="${NUT_PASS:-}"
 
@@ -140,13 +162,18 @@ if { [ -z "$NUT_USER" ] || [ -z "$NUT_PASS" ]; } && [ -r /root/nut-credentials.t
     : "${NUT_PASS:=$(awk -F': *' '/^Admin Pass:/ {print $2; exit}' /root/nut-credentials.txt)}"
 fi
 
-if [ -z "$NUT_USER" ]; then
-    read -r -p "NUT admin user [admin]: " NUT_USER
-    NUT_USER="${NUT_USER:-admin}"
-fi
-if [ -z "$NUT_PASS" ]; then
-    read -r -s -p "NUT password for $NUT_USER: " NUT_PASS
-    echo
+if [ -z "$NUT_USER" ] || [ -z "$NUT_PASS" ]; then
+    section "Credentials"
+    if [ -z "$NUT_USER" ]; then
+        echo -en "  ${CYAN}Admin user${NC} [admin]: "
+        read -r NUT_USER
+        NUT_USER="${NUT_USER:-admin}"
+    fi
+    if [ -z "$NUT_PASS" ]; then
+        echo -en "  ${CYAN}Password${NC} for ${NUT_USER}: "
+        read -r -s NUT_PASS
+        echo
+    fi
 fi
 
 case "$ACTION" in
@@ -155,57 +182,86 @@ case "$ACTION" in
     stop)  CMD="test.battery.stop"        ;;
 esac
 
-# Verify this UPS actually supports the requested INSTCMD before firing.
-if ! upscmd -l "$TARGET" 2>/dev/null | grep -qx "$CMD"; then
-    err "$TARGET does not advertise '$CMD'."
-    echo "Supported INSTCMDs on this UPS:"
-    upscmd -l "$TARGET" 2>/dev/null | sed 's/^/  /'
+# Verify the UPS supports the requested INSTCMD. If --quick isn't supported but
+# --deep is, suggest it rather than just bailing with a raw error.
+SUPPORTED=$(upscmd -l "$TARGET" 2>/dev/null | grep ' - ' | awk '{print $1}' || true)
+
+if ! echo "$SUPPORTED" | grep -qx "$CMD"; then
+    section "Unsupported Command"
+    echo -e "  ${RED}${CMD}${NC} is not supported by ${CYAN}${TARGET}${NC}."
+    if [ "$ACTION" = "quick" ] && echo "$SUPPORTED" | grep -qx "test.battery.start.deep"; then
+        echo
+        echo -e "  ${YELLOW}Tip:${NC} this UPS supports a deep test instead:"
+        echo -e "  ${DIM}$(basename "$0") --deep${NC}"
+    fi
+    # Show available battery test commands
+    BATT_CMDS=$(echo "$SUPPORTED" | grep '^test\.battery\.' || true)
+    if [ -n "$BATT_CMDS" ]; then
+        echo
+        echo -e "  ${CYAN}Available battery test commands:${NC}"
+        echo "$BATT_CMDS" | while read -r c; do
+            DESC=$(upscmd -l "$TARGET" 2>/dev/null | grep "^$c " | sed 's/^[^ ]* - //')
+            printf "    ${CYAN}%-36s${NC} ${DIM}%s${NC}\n" "$c" "$DESC"
+        done
+    fi
+    print_hints
     exit 1
 fi
 
 # Show what we're about to do.
-MODEL=$(upsc "$TARGET" ups.model 2>/dev/null || echo "unknown")
-echo
-echo "Target:  ${CYAN}${TARGET}${NC} (${MODEL})"
-echo "Action:  ${YELLOW}${CMD}${NC}"
-echo "User:    ${NUT_USER}"
+section "UPS"
+line "Target:" "$TARGET"
+[ -n "$MFR$MODEL" ] && line "Model:" "$MFR $MODEL"
+section "Test"
+line "Command:" "${YELLOW}${CMD}${NC}"
+line "User:" "$NUT_USER"
 echo
 
 if [ "$ASSUME_YES" -ne 1 ]; then
-    read -r -p "Proceed? [y/N] " CONFIRM
+    read -r -p "  Proceed? [y/N] " CONFIRM
     case "$CONFIRM" in
         y|Y|yes|YES) ;;
-        *) info "Cancelled."; print_hints; exit 0 ;;
+        *) echo; info "Cancelled."; print_hints; exit 0 ;;
     esac
 fi
 
-info "Sending $CMD ..."
+echo
+info "Sending ${YELLOW}${CMD}${NC} ..."
 if ! upscmd -u "$NUT_USER" -p "$NUT_PASS" "$TARGET" "$CMD"; then
-    err "INSTCMD failed. Check that '$NUT_USER' has 'instcmds = ALL' in /etc/nut/upsd.users."
+    err "INSTCMD failed. Check that '${NUT_USER}' has 'instcmds = ALL' in /etc/nut/upsd.users."
     exit 1
 fi
 ok "Command accepted."
 
-# Poll for the result if we started a test.
 if [ "$ACTION" = "stop" ]; then
     print_hints
     exit 0
 fi
 
+section "Result"
 info "Polling ups.test.result (up to 60s)…"
 for _ in $(seq 1 12); do
     sleep 5
     RESULT=$(upsc "$TARGET" ups.test.result 2>/dev/null || true)
     [ -z "$RESULT" ] && continue
-    echo -e "  ${DIM}…${NC} $RESULT"
-    case "$RESULT" in
-        *"In progress"*|*"InProgress"*|*Pending*) continue ;;
-        *Done*|*OK*|*Passed*|*Failed*|*Aborted*|*Warning*|*"Bad"*)
+    case "${RESULT,,}" in
+        *"in progress"*|*"inprogress"*|*pending*)
+            echo -e "  ${DIM}… ${RESULT}${NC}"
+            continue
+            ;;
+        *"done and passed"*|*ok*|*passed*)
+            ok "${GREEN}${RESULT}${NC}"
+            print_hints; exit 0
+            ;;
+        *failed*|*aborted*|*error*|*bad*)
+            warn "${RED}${RESULT}${NC}"
+            print_hints; exit 0
+            ;;
+        *)
             ok "Final: $RESULT"
-            print_hints
-            exit 0
+            print_hints; exit 0
             ;;
     esac
 done
-warn "Did not see a terminal result within 60s. Check later with: $0 --status"
+warn "No terminal result within 60s. Check later with: $(basename "$0") --status"
 print_hints
