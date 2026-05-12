@@ -1,3 +1,5 @@
+![homelab-nut](image.png)
+
 # Homelab NUT (Network UPS Tools)
 
 This repository contains documentation and configuration examples for setting up Network UPS Tools (NUT) in a homelab environment. NUT provides a common protocol and set of tools to monitor and manage UPS (Uninterruptible Power Supply) hardware.
