@@ -55,8 +55,8 @@ sudo ./scripts/setup-server.sh myups usbhid-ups
 # Client setup (provide server IP, UPS name, password from server setup)
 sudo ./scripts/setup-client.sh 192.168.1.10 myups secretpassword
 
-# Check status
-./scripts/ups-status.sh myups@localhost
+# Check status (auto-discovers the local UPS; or pass UPS@HOST explicitly)
+./ups-status.sh
 ```
 
 ### Option 2: Docker monitoring on top of bare-metal NUT
