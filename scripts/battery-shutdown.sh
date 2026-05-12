@@ -47,9 +47,22 @@ log "  Threshold: ${THRESHOLD}%"
 log "  Nodes:     $REMOTE_NODES"
 log "  Interval:  ${POLL_INTERVAL}s"
 
+FAIL_COUNT=0
+FAIL_WARN=5   # log a warning after this many consecutive failed polls
+
 while true; do
     STATUS=$(upsc "$UPS" ups.status 2>/dev/null || echo "")
     CHARGE=$(upsc "$UPS" battery.charge 2>/dev/null || echo "")
+
+    if [[ -z "$STATUS" ]] || [[ -z "$CHARGE" ]]; then
+        FAIL_COUNT=$(( FAIL_COUNT + 1 ))
+        if (( FAIL_COUNT == 1 )) || (( FAIL_COUNT % FAIL_WARN == 0 )); then
+            log "WARNING: cannot read UPS data from $UPS (consecutive failures: $FAIL_COUNT)"
+        fi
+        sleep "$POLL_INTERVAL"
+        continue
+    fi
+    FAIL_COUNT=0
 
     # Clear lock when power is restored so future outages re-trigger
     if [[ "$STATUS" == *"OL"* ]] && [[ -f "$LOCK_FILE" ]]; then
