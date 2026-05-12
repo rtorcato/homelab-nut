@@ -6,8 +6,6 @@
 # Usage: ./ups-status.sh [UPS@HOST]
 #
 
-UPS="${1:-myups@localhost}"
-
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -19,6 +17,20 @@ NC='\033[0m'
 if ! command -v upsc &> /dev/null; then
     echo "Error: upsc command not found. Is NUT installed?"
     exit 1
+fi
+
+# If no UPS specified, auto-discover the first UPS on localhost.
+if [ -n "$1" ]; then
+    UPS="$1"
+else
+    HOST="localhost"
+    FIRST_UPS=$(upsc -l "$HOST" 2>/dev/null | head -n1)
+    if [ -z "$FIRST_UPS" ]; then
+        echo -e "\033[0;31mError: No UPS found on $HOST. Is nut-server running?\033[0m"
+        echo "Pass UPS explicitly, e.g.: $0 myups@192.168.1.10"
+        exit 1
+    fi
+    UPS="${FIRST_UPS}@${HOST}"
 fi
 
 # Get all data
