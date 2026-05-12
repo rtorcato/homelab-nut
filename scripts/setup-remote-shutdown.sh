@@ -3,8 +3,9 @@
 # Setup Remote Shutdown via SSH
 # Run this on the Pi (NUT server) to:
 #   1. Generate an SSH key for root
-#   2. Install the battery-shutdown daemon
-#   3. Create and enable a systemd service
+#   2. Copy it to the remote node (prompts for password once)
+#   3. Install the battery-shutdown daemon
+#   4. Create and enable a systemd service
 #
 # Usage: sudo ./setup-remote-shutdown.sh [user@host] [threshold%]
 #
@@ -47,6 +48,8 @@ echo
 # ── 1. SSH key ──────────────────────────────────────────────────────────────
 
 info "Checking SSH key..."
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
 if [[ ! -f "$SSH_KEY" ]]; then
     ssh-keygen -t ed25519 -f "$SSH_KEY" -N "" -C "ups-battery-shutdown@$(hostname)"
     ok "Generated $SSH_KEY"
@@ -54,48 +57,75 @@ else
     ok "SSH key already exists: $SSH_KEY"
 fi
 
-echo
-warn "You must copy the public key to each remote node."
-warn "Run the following for each node and enter the password when prompted:"
-echo
-for NODE in $REMOTE_NODES; do
-    echo "    ssh-copy-id -i ${SSH_KEY}.pub ${NODE}"
-done
-echo
-read -r -p "Press Enter once you've copied the key(s), then we'll test the connection..."
+# ── 2. Copy key to each remote node ─────────────────────────────────────────
 
-# Test SSH to each node
 for NODE in $REMOTE_NODES; do
-    info "Testing SSH to $NODE..."
-    if ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-           -o BatchMode=yes "$NODE" 'echo ok' &>/dev/null; then
-        ok "SSH to $NODE works"
+    info "Copying SSH key to $NODE (you will be prompted for the password)..."
+    if ssh-copy-id -i "${SSH_KEY}.pub" "$NODE"; then
+        ok "Key copied to $NODE"
     else
-        err "Cannot SSH to $NODE. Ensure the key is authorized and the host is reachable."
+        echo
+        warn "ssh-copy-id failed. You can add the key manually instead."
+        warn "On $NODE, append this line to ~/.ssh/authorized_keys:"
+        echo
+        echo "    $(cat "${SSH_KEY}.pub")"
+        echo
+        read -r -p "Press Enter once the key is in place..."
     fi
 done
 
-# ── 2. Verify sudo shutdown works on remote ──────────────────────────────────
+# ── 3. Test SSH connection ───────────────────────────────────────────────────
 
 echo
-warn "The remote user needs passwordless sudo for shutdown."
-warn "On each node, run:"
+for NODE in $REMOTE_NODES; do
+    info "Testing SSH connection to $NODE..."
+    SSH_ERR=$(ssh -i "$SSH_KEY" \
+        -o StrictHostKeyChecking=no \
+        -o ConnectTimeout=10 \
+        -o BatchMode=yes \
+        "$NODE" 'echo ok' 2>&1) && SSH_OK=1 || SSH_OK=0
+    if [[ "$SSH_OK" -eq 1 ]]; then
+        ok "SSH to $NODE works"
+    else
+        echo -e "${RED}SSH test failed:${NC} $SSH_ERR"
+        echo
+        warn "Troubleshooting tips:"
+        echo "  1. Is the host reachable?  ping ${NODE##*@}"
+        echo "  2. Is SSH running?         ssh ${NODE} (try manually)"
+        echo "  3. Key authorized?         check ~/.ssh/authorized_keys on $NODE"
+        echo "  4. Non-standard port?      add -p <port> to SSH_OPTS in $DAEMON_DST"
+        err "Fix SSH access to $NODE and re-run this script."
+    fi
+done
+
+# ── 4. Configure passwordless sudo on remote ─────────────────────────────────
+
 echo
 for NODE in $REMOTE_NODES; do
     RUSER="${NODE%%@*}"
-    echo "    echo '${RUSER} ALL=(ALL) NOPASSWD: /sbin/shutdown' | sudo tee /etc/sudoers.d/ups-shutdown"
+    info "Checking sudo shutdown on $NODE..."
+    # Test if sudo shutdown -h is already allowed (dry-run with --no-execute)
+    if ssh -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=10 \
+            "$NODE" 'sudo -n shutdown --help' &>/dev/null; then
+        ok "sudo shutdown already works for $RUSER on $NODE"
+    else
+        warn "sudo shutdown needs to be configured on $NODE."
+        warn "Run this on $NODE (or press Enter to skip and do it manually):"
+        echo
+        echo "    echo '${RUSER} ALL=(ALL) NOPASSWD: /sbin/shutdown' | sudo tee /etc/sudoers.d/ups-shutdown"
+        echo
+        read -r -p "Press Enter once configured (or to skip)..."
+    fi
 done
-echo
-read -r -p "Press Enter once sudoers is configured..."
 
-# ── 3. Install daemon script ─────────────────────────────────────────────────
+# ── 5. Install daemon script ─────────────────────────────────────────────────
 
 info "Installing daemon script..."
 [[ ! -f "$DAEMON_SRC" ]] && err "Cannot find battery-shutdown.sh at $DAEMON_SRC"
 install -m 755 "$DAEMON_SRC" "$DAEMON_DST"
 ok "Installed $DAEMON_DST"
 
-# ── 4. Write config ──────────────────────────────────────────────────────────
+# ── 6. Write config ──────────────────────────────────────────────────────────
 
 info "Writing config to $CONF..."
 cat > "$CONF" << EOF
@@ -106,15 +136,19 @@ UPS=${UPS}
 THRESHOLD=${THRESHOLD}
 REMOTE_NODES="${REMOTE_NODES}"
 POLL_INTERVAL=30
+SSH_KEY=${SSH_KEY}
 EOF
 chmod 640 "$CONF"
-ok "Config written"
+ok "Config written: $CONF"
 
-# ── 5. Patch SSH key into daemon ─────────────────────────────────────────────
-# Append the key path to SSH_OPTS in the installed daemon
-sed -i "s|SSH_OPTS=\"|SSH_OPTS=\"-i ${SSH_KEY} |" "$DAEMON_DST"
+# ── 7. Patch SSH key into daemon ─────────────────────────────────────────────
 
-# ── 6. Systemd service ───────────────────────────────────────────────────────
+# Only patch if not already patched
+if ! grep -q "id_ed25519_ups" "$DAEMON_DST"; then
+    sed -i "s|SSH_OPTS=\"|SSH_OPTS=\"-i ${SSH_KEY} |" "$DAEMON_DST"
+fi
+
+# ── 8. Systemd service ───────────────────────────────────────────────────────
 
 info "Creating systemd service..."
 cat > "$SERVICE" << 'UNIT'
@@ -140,29 +174,22 @@ systemctl enable ups-battery-shutdown.service
 systemctl restart ups-battery-shutdown.service
 ok "Service enabled and started"
 
-# ── 7. Dry-run test ──────────────────────────────────────────────────────────
+# ── 9. Status summary ────────────────────────────────────────────────────────
 
 echo
-info "Running dry-run test..."
-source "$CONF"
 STATUS=$(upsc "$UPS" ups.status 2>/dev/null || echo "unknown")
 CHARGE=$(upsc "$UPS" battery.charge 2>/dev/null || echo "unknown")
+
+echo -e "${GREEN}=== Setup Complete ===${NC}"
+echo
 echo "  UPS status:  $STATUS"
 echo "  Battery:     ${CHARGE}%"
-echo "  Threshold:   ${THRESHOLD}%"
-echo
-
-"$DAEMON_DST" --test &
-sleep 5
-kill %1 2>/dev/null || true
-
-echo
-ok "Setup complete!"
+echo "  Threshold:   ${THRESHOLD}%  (shutdown triggers at or below this)"
+echo "  Nodes:       $REMOTE_NODES"
 echo
 echo "  Monitor logs:   journalctl -u ups-battery-shutdown -f"
 echo "  Service status: systemctl status ups-battery-shutdown"
 echo "  Dry-run test:   $DAEMON_DST --test"
 echo
-warn "To simulate: disconnect power from the UPS and let the battery drain to ${THRESHOLD}%."
-warn "The Pi will SSH to [$REMOTE_NODES] and run 'sudo shutdown -h now'."
+warn "When battery hits ${THRESHOLD}% on battery, the Pi will SSH to [$REMOTE_NODES] and run 'sudo shutdown -h now'."
 echo
