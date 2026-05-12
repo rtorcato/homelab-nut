@@ -57,6 +57,17 @@ sudo ./scripts/setup-client.sh 192.168.1.10 myups secretpassword
 
 # Check status (auto-discovers the local UPS; or pass UPS@HOST explicitly)
 ./ups-status.sh
+
+# View credentials stored by setup-server.sh
+./scripts/show-credentials.sh
+# or directly:
+sudo cat /root/nut-credentials.txt
+
+# Trigger a UPS battery self-test (must run on the host the UPS is attached to)
+./scripts/test-battery.sh           # quick test (default)
+./scripts/test-battery.sh --deep    # deep test
+./scripts/test-battery.sh --status  # show last test result
+./scripts/test-battery.sh --list    # list supported test commands
 ```
 
 ### Option 2: Docker monitoring on top of bare-metal NUT
@@ -75,9 +86,15 @@ Set up bare-metal NUT first with `setup-server.sh`, then:
 ```bash
 cd docker
 cp .env.example .env
-# Edit .env: set NUT_API_PASSWORD from /root/nut-credentials.txt on the host
+# Edit .env: set NUT_HOST and UPS_NAME for the nut-exporter
+
+# Configure nut-webgui for one or more NUT servers (see nut-webgui.toml)
+# The file is pre-configured; edit addresses/ports if your setup differs.
 docker compose up -d
 ```
+
+The webgui supports multiple NUT servers via `docker/nut-webgui.toml` — add a
+`[upsd.<name>]` section for each host running `nut-server`.
 
 Access:
 - **Web UI** (nut-webgui): http://localhost:9000
@@ -157,6 +174,7 @@ sudo systemctl start nut-client
 ```
 homelab-nut/
 ├── README.md
+├── ups-status.sh                        # UPS status (auto-discovers local UPS)
 ├── docs/
 │   ├── server-setup.md      # Server installation guide
 │   ├── client-setup.md      # Client configuration guide
@@ -166,13 +184,16 @@ homelab-nut/
 │   └── smart-shutdown.md    # Device shutdown automation
 ├── docker/
 │   ├── compose.yml                   # nut-webgui + Prometheus exporter
+│   ├── nut-webgui.toml               # Multi-server webgui config (tracked)
+│   ├── nut-webgui.toml.example       # Template for nut-webgui.toml
 │   └── .env.example                  # Environment template
 └── scripts/
     ├── setup-server.sh        # Automated NUT server setup
     ├── setup-client.sh        # Automated NUT client setup
     ├── setup-exporter.sh      # Bare-metal nut_exporter (no Docker)
-    ├── ups-status.sh          # Status check via local `upsc`
-    └── exporter-status.sh     # Status check via nut_exporter HTTP
+    ├── exporter-status.sh     # Status check via nut_exporter HTTP
+    ├── test-battery.sh        # Trigger UPS battery self-test (localhost only)
+    └── show-credentials.sh    # Print /root/nut-credentials.txt via sudo
 ```
 
 ## Resources
