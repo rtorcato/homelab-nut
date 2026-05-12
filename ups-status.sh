@@ -7,7 +7,7 @@
 #
 set -euo pipefail
 
-UPS="myups@localhost"
+UPS=""
 WATCH=0
 WATCH_INTERVAL=2
 JSON=0
@@ -46,6 +46,18 @@ fi
 if ! command -v upsc &>/dev/null; then
     echo "Error: upsc command not found. Is NUT installed?" >&2
     exit 1
+fi
+
+# If no UPS specified, auto-discover the first UPS on localhost so the
+# script works on any host without remembering its UPS name.
+if [ -z "$UPS" ]; then
+    FIRST_UPS=$(upsc -l localhost 2>/dev/null | head -n1)
+    if [ -z "$FIRST_UPS" ]; then
+        echo "Error: No UPS found on localhost. Is nut-server running?" >&2
+        echo "Pass UPS explicitly, e.g.: $0 myups@192.168.1.10" >&2
+        exit 1
+    fi
+    UPS="${FIRST_UPS}@localhost"
 fi
 
 is_int() { [[ "${1:-}" =~ ^-?[0-9]+$ ]]; }
