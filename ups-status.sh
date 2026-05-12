@@ -253,6 +253,19 @@ render() {
         [ -n "$BEEPER" ] && line "Beeper:" "$BEEPER"
     fi
     echo
+    print_hints
+}
+
+print_hints() {
+    local script
+    script=$(basename "$0")
+    echo -e "${CYAN}─ Options ─${NC}"
+    echo -e "  ${DIM}$script [UPS@HOST]            target a specific UPS (default: myups@localhost)${NC}"
+    echo -e "  ${DIM}$script --watch[=SECONDS]    auto-refresh (default 2s)${NC}"
+    echo -e "  ${DIM}$script --json | -j          raw key/value JSON dump${NC}"
+    echo -e "  ${DIM}$script --verbose | -v       full upsc output${NC}"
+    echo -e "  ${DIM}$script --help | -h          show usage${NC}"
+    echo
 }
 
 if [ "$WATCH" -eq 1 ]; then
