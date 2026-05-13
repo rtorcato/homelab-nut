@@ -82,6 +82,32 @@ Prints the NUT credentials stored in `/root/nut-credentials.txt` (written by `se
 
 ---
 
+## 💀 Remote Node Shutdown Script
+
+### `remote-shutdown.sh`
+Template shutdown script to deploy on each **remote node** that the Pi will SSH into during a power outage. Copy it to `~/shutdown.sh` on the target machine.
+
+```bash
+# On the remote node:
+cp remote-shutdown.sh ~/shutdown.sh
+chmod +x ~/shutdown.sh
+
+# Test it without actually shutting down:
+~/shutdown.sh --test
+
+# The Pi runs it automatically via SSH when battery hits the threshold.
+# Logs are written to /tmp/ups-shutdown.log on the remote node.
+```
+
+Stops Docker containers gracefully, syncs filesystems, then calls `sudo shutdown -h now`. Requires passwordless sudo for `shutdown`:
+```bash
+echo "$USER ALL=(ALL) NOPASSWD: /sbin/shutdown" | sudo tee /etc/sudoers.d/ups-shutdown
+```
+
+Customise `SHUTDOWN_DELAY` at the top if services need extra time before the machine powers off.
+
+---
+
 ## ⚡ Remote Shutdown Service
 
 ### `ups-service.sh`

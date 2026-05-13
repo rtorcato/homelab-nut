@@ -24,3 +24,5 @@ backup-*/
 
 # Logs
 *.log
+logs/*
+!logs/.gitkeep

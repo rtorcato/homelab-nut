@@ -28,10 +28,16 @@ THRESHOLD=50
 REMOTE_NODES=""
 POLL_INTERVAL=30
 REMOTE_SHUTDOWN_CMD="~/shutdown.sh"
+LOG_FILE=""
 
 [[ -f "$CONF" ]] && source "$CONF"
 
-log() { logger -t ups-battery-shutdown "$*"; echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+log() {
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+    logger -t ups-battery-shutdown "$*"
+    echo "$msg"
+    [[ -n "$LOG_FILE" ]] && echo "$msg" >> "$LOG_FILE"
+}
 
 if [[ -z "$REMOTE_NODES" ]]; then
     log "ERROR: REMOTE_NODES not configured in $CONF"
@@ -82,11 +88,14 @@ while true; do
                 log "  [DRY RUN] would run: ssh $SSH_OPTS $NODE '$REMOTE_SHUTDOWN_CMD'"
             else
                 # shellcheck disable=SC2086
-                if ssh $SSH_OPTS "$NODE" "$REMOTE_SHUTDOWN_CMD" 2>&1 | \
-                   while IFS= read -r line; do log "  ssh($NODE): $line"; done; then
-                    log "  ✓ Shutdown command accepted by $NODE"
+                SSH_OUT=$(ssh $SSH_OPTS "$NODE" \
+                    "nohup bash -c '$REMOTE_SHUTDOWN_CMD' >/tmp/ups-shutdown.log 2>&1 </dev/null &" \
+                    2>&1) && SSH_RC=0 || SSH_RC=$?
+                [[ -n "$SSH_OUT" ]] && log "  ssh($NODE): $SSH_OUT"
+                if [[ "$SSH_RC" -eq 0 ]]; then
+                    log "  ✓ Shutdown command dispatched to $NODE (check /tmp/ups-shutdown.log there)"
                 else
-                    log "  ✗ Failed to reach $NODE (exit $?)"
+                    log "  ✗ Failed to reach $NODE (SSH exit $SSH_RC)"
                 fi
             fi
         done

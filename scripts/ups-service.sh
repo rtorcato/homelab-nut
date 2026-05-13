@@ -256,6 +256,7 @@ REMOTE_NODES="${REMOTE_NODES}"
 POLL_INTERVAL=30
 SSH_KEY=${SSH_KEY}
 REMOTE_SHUTDOWN_CMD=~/shutdown.sh
+LOG_FILE=${REPO_ROOT}/logs/ups-battery-shutdown.log
 EOF
         chmod 640 "$CONF_REPO"
         ok "Config written: $CONF_REPO"
