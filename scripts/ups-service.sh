@@ -130,6 +130,18 @@ run_setup() {
     read -r -p "  Remote node(s) to shut down [user@host, space-separated]: " REMOTE_NODES
     [[ -z "$REMOTE_NODES" ]] && err "At least one remote node is required"
 
+    # UniFi device detection
+    UNIFI_NODES=""
+    echo
+    read -r -p "  Are any of these nodes UniFi devices (Dream Machine, UNAS, etc.)? [y/N] " REPLY
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+        echo
+        info "UniFi devices need their SSH key added via the controller UI, not ssh-copy-id."
+        info "They also run poweroff directly — no shutdown.sh script needed."
+        echo
+        read -r -p "  Which nodes are UniFi? [user@host, space-separated]: " UNIFI_NODES
+    fi
+
     # Threshold
     read -r -p "  Shutdown threshold % [default 50]: " THRESHOLD
     THRESHOLD="${THRESHOLD:-50}"
@@ -178,6 +190,10 @@ run_setup() {
 
     # ── Copy key to each node ──────────────────────────────────────────────────
     for NODE in $REMOTE_NODES; do
+        if echo "$UNIFI_NODES" | grep -qw "$NODE"; then
+            info "Skipping ssh-copy-id for UniFi node $NODE — key must be added via controller UI"
+            continue
+        fi
         info "Copying SSH key to $NODE (you will be prompted for the password)..."
         if ssh-copy-id -i "${SSH_KEY}.pub" "$NODE"; then
             ok "Key copied to $NODE"
@@ -213,6 +229,10 @@ run_setup() {
     # ── Passwordless sudo ──────────────────────────────────────────────────────
     echo
     for NODE in $REMOTE_NODES; do
+        if echo "$UNIFI_NODES" | grep -qw "$NODE"; then
+            info "Skipping sudo check for UniFi node $NODE (poweroff runs as root)"
+            continue
+        fi
         RUSER="${NODE%%@*}"
         info "Checking passwordless sudo on $NODE..."
         if ssh -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=10 \
@@ -258,6 +278,16 @@ SSH_KEY=${SSH_KEY}
 REMOTE_SHUTDOWN_CMD=~/shutdown.sh
 LOG_FILE=${REPO_ROOT}/logs/ups-battery-shutdown.log
 EOF
+        # Write per-node CMD overrides for UniFi devices
+        if [[ -n "$UNIFI_NODES" ]]; then
+            echo "" >> "$CONF_REPO"
+            echo "# UniFi device overrides — poweroff sent inline, no script needed on device" >> "$CONF_REPO"
+            for UNODE in $UNIFI_NODES; do
+                UHOST="${UNODE##*@}"
+                USANITIZED="${UHOST//-/_}"; USANITIZED="${USANITIZED//\./_}"
+                echo "CMD_${USANITIZED}=poweroff" >> "$CONF_REPO"
+            done
+        fi
         chmod 640 "$CONF_REPO"
         ok "Config written: $CONF_REPO"
     else
@@ -267,6 +297,19 @@ EOF
     # ── Symlink config into /etc ───────────────────────────────────────────────
     ln -sf "$CONF_REPO" "$CONF"
     ok "Symlinked $CONF → $CONF_REPO"
+
+    # ── UniFi SSH key instructions ─────────────────────────────────────────────
+    if [[ -n "$UNIFI_NODES" ]]; then
+        echo
+        echo -e "  ${YELLOW}${BOLD}UniFi SSH Key Setup (manual step required)${NC}"
+        echo
+        echo "  Paste this public key into each UniFi device via the controller:"
+        echo "  UniFi Network App → Settings → System → Administration → SSH Keys"
+        echo
+        cat "${SSH_KEY}.pub"
+        echo
+        read -r -p "  Press Enter once the key is added to all UniFi devices..."
+    fi
 
     # ── Patch SSH key into daemon ──────────────────────────────────────────────
     if ! grep -q "id_ed25519_ups" "$DAEMON_DST"; then

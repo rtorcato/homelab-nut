@@ -10,8 +10,13 @@
 # Configuration: /etc/ups-battery-shutdown.conf
 #   UPS=myups@localhost
 #   THRESHOLD=50
-#   REMOTE_NODES="myuser@control-node"   (space-separated for multiple nodes)
+#   REMOTE_NODES="user@host1 admin@unifi-device"   (space-separated)
 #   POLL_INTERVAL=30
+#   REMOTE_SHUTDOWN_CMD=~/shutdown.sh              (default for all nodes)
+#   CMD_unifi_device=poweroff                      (per-node override; hyphens→underscores)
+#
+# Per-node CMD overrides: UniFi devices don't persist scripts across firmware
+# updates, so set CMD_<hostname> to an inline command (e.g. poweroff) instead.
 #
 set -euo pipefail
 
@@ -83,19 +88,42 @@ while true; do
         log "Battery at ${CHARGE}% on battery (threshold: ${THRESHOLD}%) — sending remote shutdown"
 
         for NODE in $REMOTE_NODES; do
-            log "→ Shutting down $NODE via SSH..."
+            HOST="${NODE##*@}"
+            SANITIZED="${HOST//-/_}"; SANITIZED="${SANITIZED//\./_}"
+            NODE_CMD_VAR="CMD_${SANITIZED}"
+            NODE_CMD="${!NODE_CMD_VAR:-$REMOTE_SHUTDOWN_CMD}"
+
+            log "→ Shutting down $NODE via SSH (cmd: $NODE_CMD)..."
+
             if [[ "$DRY_RUN" -eq 1 ]]; then
-                log "  [DRY RUN] would run: ssh $SSH_OPTS $NODE '$REMOTE_SHUTDOWN_CMD'"
-            else
-                # shellcheck disable=SC2086
-                SSH_OUT=$(ssh $SSH_OPTS "$NODE" \
-                    "nohup bash -c '$REMOTE_SHUTDOWN_CMD' >/tmp/ups-shutdown.log 2>&1 </dev/null &" \
-                    2>&1) && SSH_RC=0 || SSH_RC=$?
-                [[ -n "$SSH_OUT" ]] && log "  ssh($NODE): $SSH_OUT"
-                if [[ "$SSH_RC" -eq 0 ]]; then
-                    log "  ✓ Shutdown command dispatched to $NODE (check /tmp/ups-shutdown.log there)"
+                if [[ "$NODE_CMD" == *"~/"* || "$NODE_CMD" == *".sh"* ]]; then
+                    log "  [DRY RUN] would run: ssh $SSH_OPTS $NODE 'nohup bash -c \"$NODE_CMD\" >/tmp/ups-shutdown.log 2>&1 </dev/null &'"
                 else
-                    log "  ✗ Failed to reach $NODE (SSH exit $SSH_RC)"
+                    log "  [DRY RUN] would run: ssh $SSH_OPTS $NODE '$NODE_CMD'"
+                fi
+            else
+                if [[ "$NODE_CMD" == *"~/"* || "$NODE_CMD" == *".sh"* ]]; then
+                    # Script — detach via nohup so SSH exits before the machine powers off
+                    # shellcheck disable=SC2086
+                    SSH_OUT=$(ssh $SSH_OPTS "$NODE" \
+                        "nohup bash -c '$NODE_CMD' >/tmp/ups-shutdown.log 2>&1 </dev/null &" \
+                        2>&1) && SSH_RC=0 || SSH_RC=$?
+                    [[ -n "$SSH_OUT" ]] && log "  ssh($NODE): $SSH_OUT"
+                    if [[ "$SSH_RC" -eq 0 ]]; then
+                        log "  ✓ Shutdown dispatched to $NODE (check /tmp/ups-shutdown.log there)"
+                    else
+                        log "  ✗ Failed to reach $NODE (SSH exit $SSH_RC)"
+                    fi
+                else
+                    # Inline command (e.g. poweroff for UniFi) — run direct, no nohup needed
+                    # shellcheck disable=SC2086
+                    SSH_OUT=$(ssh $SSH_OPTS "$NODE" "$NODE_CMD" 2>&1) && SSH_RC=0 || SSH_RC=$?
+                    [[ -n "$SSH_OUT" ]] && log "  ssh($NODE): $SSH_OUT"
+                    if [[ "$SSH_RC" -eq 0 ]]; then
+                        log "  ✓ Shutdown command sent to $NODE"
+                    else
+                        log "  ✗ Failed to reach $NODE (SSH exit $SSH_RC)"
+                    fi
                 fi
             fi
         done

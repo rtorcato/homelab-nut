@@ -30,7 +30,30 @@ sudo ./scripts/ups-service.sh edit
 |---|---|---|
 | `UPS` | `myups@localhost` | UPS name and host as reported by `upsc -l` |
 | `THRESHOLD` | `50` | Battery % at which remote shutdown triggers (on battery only) |
-| `REMOTE_NODES` | `"myuser@control-node"` | Space-separated list of `user@host` targets to SSH into |
+| `REMOTE_NODES` | `"user@host1 admin@unifi"` | Space-separated list of `user@host` targets to SSH into |
 | `POLL_INTERVAL` | `30` | How often (seconds) the daemon checks the UPS |
 | `SSH_KEY` | `/root/.ssh/id_ed25519_ups` | Private key used for passwordless SSH to remote nodes |
-| `REMOTE_SHUTDOWN_CMD` | `~/shutdown.sh` | Command run on each remote node when shutdown is triggered |
+| `REMOTE_SHUTDOWN_CMD` | `~/shutdown.sh` | Default command run on each remote node when shutdown is triggered |
+| `CMD_<hostname>` | `CMD_dream_machine=poweroff` | Per-node command override (hyphens and dots in hostname → underscores) |
+| `LOG_FILE` | `/home/user/homelab-nut/logs/ups-battery-shutdown.log` | Optional log file path |
+
+### Per-node command overrides (`CMD_<hostname>`)
+
+UniFi devices (Dream Machine, UNAS, etc.) delete files on firmware updates, so a pre-deployed `~/shutdown.sh` won't survive. Instead, set a `CMD_` override to send the command inline via SSH:
+
+```bash
+REMOTE_NODES="myuser@control-node admin@dream-machine admin@unas-express"
+REMOTE_SHUTDOWN_CMD=~/shutdown.sh   # default for standard Linux nodes
+
+# UniFi overrides — hostname with hyphens replaced by underscores
+CMD_dream_machine=poweroff
+CMD_unas_express=poweroff
+```
+
+The daemon detects whether the command is a script path (`~/...` or `*.sh`) or an inline command and dispatches accordingly:
+- **Script path** → wrapped in `nohup bash -c '...' &` so SSH exits before the machine goes down
+- **Inline command** → sent directly via SSH (UniFi's `poweroff` returns fast enough)
+
+**UniFi SSH key setup** — cannot use `ssh-copy-id` on UniFi devices. Add the Pi's public key (`/root/.ssh/id_ed25519_ups.pub`) via:
+
+> UniFi Network App → Settings → System → Administration → SSH Keys
