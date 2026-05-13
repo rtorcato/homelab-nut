@@ -30,7 +30,7 @@ warn() { echo -e "  ${YELLOW}!${NC} $*"; }
 [[ $EUID -ne 0 ]] && err "Run as root: sudo $0 $*"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CONF_REPO="${REPO_ROOT}/config/ups-battery-shutdown.conf"
+CONF_REPO="${REPO_ROOT}/config/ups-battery-shutdown.$(hostname -s).conf"
 CONF="/etc/ups-battery-shutdown.conf"   # symlink → CONF_REPO
 DAEMON_SRC="$(dirname "$0")/services/battery-shutdown.sh"
 DAEMON_DST="/usr/local/bin/ups-battery-shutdown"
