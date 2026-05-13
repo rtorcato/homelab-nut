@@ -1,4 +1,4 @@
-![homelab-nut](image.png)
+![homelab-nut](cover.png)
 
 # Homelab NUT (Network UPS Tools)
 
@@ -132,7 +132,27 @@ To check status from any machine without installing NUT or `upsc`:
 ./scripts/exporter-status.sh http://192.0.2.10:9199 myups --raw    # all metrics
 ```
 
-### Option 4: Manual Server Setup
+### Option 4: Remote Shutdown Service
+
+Automatically SSH into a remote node and run `~/shutdown.sh` when the UPS battery drops below a threshold. Managed by `ups-service.sh` on the NUT server (Pi).
+
+```bash
+# First run — interactive setup wizard (SSH keys, remote node, threshold)
+sudo ./scripts/ups-service.sh
+
+# Subsequent runs — management menu
+sudo ./scripts/ups-service.sh
+
+# Or use subcommands directly
+sudo ./scripts/ups-service.sh status
+sudo ./scripts/ups-service.sh set-threshold 40
+sudo ./scripts/ups-service.sh logs
+sudo ./scripts/ups-service.sh remove
+```
+
+Config is written to `config/ups-battery-shutdown.<hostname>.conf` in the repo and symlinked to `/etc/ups-battery-shutdown.conf`. Multiple NUT servers can share the same repo — each gets its own config file scoped by hostname.
+
+### Option 5: Manual Server Setup
 
 ```bash
 # Install NUT
@@ -148,7 +168,7 @@ sudo systemctl enable nut-server
 sudo systemctl start nut-server
 ```
 
-### Manual Client Setup (remote machines)
+### Option 6: Manual Client Setup (remote machines)
 
 ```bash
 # Install NUT client
@@ -176,7 +196,8 @@ sudo systemctl start nut-client
 ```
 homelab-nut/
 ├── README.md
-├── ups-status.sh                        # UPS status (auto-discovers local UPS)
+├── ups-status.sh                        # Pretty-printed UPS status (run on the Pi)
+├── upsc-output.md                       # upsc variable reference (APC Back-UPS ES 650G1)
 ├── docs/
 │   ├── server-setup.md      # Server installation guide
 │   ├── client-setup.md      # Client configuration guide
@@ -189,13 +210,21 @@ homelab-nut/
 │   ├── nut-webgui.toml               # Multi-server webgui config (tracked)
 │   ├── nut-webgui.toml.example       # Template for nut-webgui.toml
 │   └── .env.example                  # Environment template
+├── config/
+│   └── ups-battery-shutdown.<hostname>.conf   # Per-server remote shutdown config
+├── reference/
+│   ├── grafana/             # Grafana provisioning config (datasource + dashboard)
+│   └── prometheus/          # Prometheus scrape config
 └── scripts/
     ├── setup-server.sh        # Automated NUT server setup
     ├── setup-client.sh        # Automated NUT client setup
     ├── setup-exporter.sh      # Bare-metal nut_exporter (no Docker)
     ├── exporter-status.sh     # Status check via nut_exporter HTTP
     ├── test-battery.sh        # Trigger UPS battery self-test (localhost only)
-    └── show-credentials.sh    # Print /root/nut-credentials.txt via sudo
+    ├── show-credentials.sh    # Print /root/nut-credentials.txt via sudo
+    ├── ups-service.sh         # Remote shutdown service manager (setup + menu)
+    └── services/
+        └── battery-shutdown.sh   # Daemon — installed by ups-service.sh, not run directly
 ```
 
 ## Resources
