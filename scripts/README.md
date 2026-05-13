@@ -90,7 +90,7 @@ Template shutdown script to deploy on each **remote node** that the Pi will SSH 
 ```bash
 # On the remote node:
 cp remote-shutdown.sh ~/shutdown.sh
-chmod +x ~/shutdown.sh
+chmod 700 ~/shutdown.sh
 
 # Test it without actually shutting down:
 ~/shutdown.sh --test

@@ -230,8 +230,8 @@ run_setup() {
     # ── Install daemon ─────────────────────────────────────────────────────────
     echo
     [[ ! -f "$DAEMON_SRC" ]] && err "Cannot find battery-shutdown.sh at $DAEMON_SRC"
-    install -m 755 "$DAEMON_SRC" "$DAEMON_DST"
-    ok "Installed $DAEMON_DST"
+    install -m 700 "$DAEMON_SRC" "$DAEMON_DST"
+    ok "Installed $DAEMON_DST (700)"
 
     # ── Write config ───────────────────────────────────────────────────────────
     local SKIP_CONF=0

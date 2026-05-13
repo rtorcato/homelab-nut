@@ -4,7 +4,7 @@
 # The NUT Pi SSHes in and executes this when the battery drops below threshold.
 #
 # Install: scp scripts/remote-shutdown.sh user@host:~/shutdown.sh
-#          ssh user@host 'chmod +x ~/shutdown.sh && ~/shutdown.sh --test'
+#          ssh user@host 'chmod 700 ~/shutdown.sh && ~/shutdown.sh --test'
 #
 # Usage: ~/shutdown.sh [--test]
 #   --test   dry-run: log what would happen, do not shut down
