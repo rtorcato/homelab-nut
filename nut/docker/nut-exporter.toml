@@ -1,6 +1,0 @@
-[[ups]]
-name = "myups"
-host = "192.0.2.10"
-port = 3493
-username = "dockermon"
-password = "nutpass"
