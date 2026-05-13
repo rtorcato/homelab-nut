@@ -27,6 +27,7 @@ UPS="myups@localhost"
 THRESHOLD=50
 REMOTE_NODES=""
 POLL_INTERVAL=30
+REMOTE_SHUTDOWN_CMD="~/shutdown.sh"
 
 [[ -f "$CONF" ]] && source "$CONF"
 
@@ -78,10 +79,10 @@ while true; do
         for NODE in $REMOTE_NODES; do
             log "→ Shutting down $NODE via SSH..."
             if [[ "$DRY_RUN" -eq 1 ]]; then
-                log "  [DRY RUN] would run: ssh $SSH_OPTS $NODE 'sudo shutdown -h now'"
+                log "  [DRY RUN] would run: ssh $SSH_OPTS $NODE '$REMOTE_SHUTDOWN_CMD'"
             else
                 # shellcheck disable=SC2086
-                if ssh $SSH_OPTS "$NODE" 'sudo shutdown -h now' 2>&1 | \
+                if ssh $SSH_OPTS "$NODE" "$REMOTE_SHUTDOWN_CMD" 2>&1 | \
                    while IFS= read -r line; do log "  ssh($NODE): $line"; done; then
                     log "  ✓ Shutdown command accepted by $NODE"
                 else

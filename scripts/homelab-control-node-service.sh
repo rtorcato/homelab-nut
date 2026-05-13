@@ -251,6 +251,7 @@ THRESHOLD=${THRESHOLD}
 REMOTE_NODES="${REMOTE_NODES}"
 POLL_INTERVAL=30
 SSH_KEY=${SSH_KEY}
+REMOTE_SHUTDOWN_CMD=~/shutdown.sh
 EOF
         chmod 640 "$CONF"
         ok "Config written: $CONF"
@@ -290,7 +291,7 @@ UNIT
 
     echo
     show_status
-    warn "When battery hits ${THRESHOLD}% on battery, the Pi will SSH to [$REMOTE_NODES] and run 'sudo shutdown -h now'."
+    warn "When battery hits ${THRESHOLD}% on battery, the Pi will SSH to [$REMOTE_NODES] and run '~/shutdown.sh'."
     echo
     echo "  Manage anytime:  sudo $0"
     echo "  Dry-run test:    $DAEMON_DST --test"
