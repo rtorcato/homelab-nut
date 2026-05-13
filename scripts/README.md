@@ -82,6 +82,29 @@ Prints the NUT credentials stored in `/root/nut-credentials.txt` (written by `se
 
 ---
 
+## 🔒 Hardening
+
+### `harden.sh`
+Tightens file permissions on sensitive NUT files and scripts. Run this on the Pi after initial setup.
+
+```bash
+sudo ./harden.sh           # apply fixes
+sudo ./harden.sh --check   # audit only, no changes
+```
+
+What it locks down:
+
+| File | Mode | Why |
+|---|---|---|
+| `/root/nut-credentials.txt` | `600` | root-only read |
+| `/etc/nut/upsd.users` + friends | `640` | root-owned, no world read |
+| `/root/.ssh/id_ed25519_ups` | `600` | SSH key, root-only |
+| `/usr/local/bin/ups-battery-shutdown` | `700` | daemon, root-only |
+| `show-credentials.sh`, `ups-service.sh`, `harden.sh` | `700` | admin-only scripts |
+| `setup-*.sh` | `750` | executable by owner+group, not world |
+
+---
+
 ## 💀 Remote Node Shutdown Script
 
 ### `remote-shutdown.sh`
