@@ -35,7 +35,8 @@ sudo ./scripts/ups-service.sh edit
 | `SSH_KEY` | `/root/.ssh/id_ed25519_ups` | Private key used for passwordless SSH to remote nodes |
 | `REMOTE_SHUTDOWN_CMD` | `~/shutdown.sh` | Default command run on each remote node when shutdown is triggered |
 | `CMD_<hostname>` | `CMD_dream_machine=poweroff` | Per-node command override (hyphens and dots in hostname → underscores) |
-| `LOG_FILE` | `/home/user/homelab-nut/logs/ups-battery-shutdown.log` | Optional log file path |
+| `LOG_FILE` | `/home/user/homelab-nut/logs/ups-battery-shutdown.log` | Optional log file path (date-stamped automatically) |
+| `SLACK_WEBHOOK` | `https://hooks.slack.com/services/...` | Optional Slack incoming webhook URL for notifications |
 
 ### Per-node command overrides (`CMD_<hostname>`)
 

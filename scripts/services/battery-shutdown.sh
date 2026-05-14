@@ -34,6 +34,7 @@ REMOTE_NODES=""
 POLL_INTERVAL=30
 REMOTE_SHUTDOWN_CMD="~/shutdown.sh"
 LOG_FILE=""
+SLACK_WEBHOOK=""
 
 [[ -f "$CONF" ]] && source "$CONF"
 
@@ -49,6 +50,14 @@ log() {
     logger -t ups-battery-shutdown "$*"
     echo "$msg"
     [[ -n "$LOG_FILE" ]] && echo "$msg" >> "$LOG_FILE"
+}
+
+slack() {
+    [[ -z "$SLACK_WEBHOOK" ]] && return
+    local text="$*"
+    curl -s -X POST "$SLACK_WEBHOOK" \
+        -H 'Content-type: application/json' \
+        -d "{\"text\": \"${text}\"}" >/dev/null 2>&1 || true
 }
 
 if [[ -z "$REMOTE_NODES" ]]; then
@@ -87,12 +96,14 @@ while true; do
     if [[ "$STATUS" == *"OL"* ]] && [[ -f "$LOCK_FILE" ]]; then
         log "Power restored (OL) — clearing shutdown lock"
         rm -f "$LOCK_FILE"
+        slack ":white_check_mark: *$(hostname)* — Power restored. UPS back on mains."
     fi
 
     if [[ "$STATUS" == *"OB"* ]] && [[ -n "$CHARGE" ]] && \
        [[ "$CHARGE" -le "$THRESHOLD" ]] && [[ ! -f "$LOCK_FILE" ]]; then
         touch "$LOCK_FILE"
         log "Battery at ${CHARGE}% on battery (threshold: ${THRESHOLD}%) — sending remote shutdown"
+        slack ":warning: *$(hostname)* — Battery at *${CHARGE}%* (threshold: ${THRESHOLD}%). Shutting down: ${REMOTE_NODES}"
 
         for NODE in $REMOTE_NODES; do
             HOST="${NODE##*@}"
@@ -120,6 +131,7 @@ while true; do
                         log "  ✓ Shutdown dispatched to $NODE (check /tmp/ups-shutdown.log there)"
                     else
                         log "  ✗ Failed to reach $NODE (SSH exit $SSH_RC)"
+                        slack ":x: *$(hostname)* — Failed to SSH to \`$NODE\` (exit $SSH_RC)"
                     fi
                 else
                     # Inline command (e.g. poweroff for UniFi) — run direct, no nohup needed
@@ -130,6 +142,7 @@ while true; do
                         log "  ✓ Shutdown command sent to $NODE"
                     else
                         log "  ✗ Failed to reach $NODE (SSH exit $SSH_RC)"
+                        slack ":x: *$(hostname)* — Failed to SSH to \`$NODE\` (exit $SSH_RC)"
                     fi
                 fi
             fi
