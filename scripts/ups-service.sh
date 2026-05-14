@@ -275,7 +275,7 @@ THRESHOLD=${THRESHOLD}
 REMOTE_NODES="${REMOTE_NODES}"
 POLL_INTERVAL=30
 SSH_KEY=${SSH_KEY}
-REMOTE_SHUTDOWN_CMD=~/shutdown.sh
+REMOTE_SHUTDOWN_CMD='~/shutdown.sh'
 LOG_FILE=${REPO_ROOT}/logs/ups-battery-shutdown.log
 EOF
         # Write per-node CMD overrides for UniFi devices

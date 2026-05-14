@@ -37,6 +37,13 @@ LOG_FILE=""
 
 [[ -f "$CONF" ]] && source "$CONF"
 
+# Date-stamp the log filename (foo.log → foo-2026-05-14.log) so each day gets its own file
+if [[ -n "$LOG_FILE" ]]; then
+    _log_dir="$(dirname "$LOG_FILE")"
+    _log_base="$(basename "$LOG_FILE" .log)"
+    LOG_FILE="${_log_dir}/${_log_base}-$(date '+%Y-%m-%d').log"
+fi
+
 log() {
     local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $*"
     logger -t ups-battery-shutdown "$*"
