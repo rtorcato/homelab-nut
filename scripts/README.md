@@ -21,7 +21,7 @@ Configures NUT client mode on a machine that monitors a **remote** NUT server (n
 
 ```bash
 sudo ./setup-client.sh 192.0.2.10 myups monpass
-#                      ^SERVER_IP  ^UPS   ^PASSWORD
+#                      ^SERVER_IP ^UPS   ^PASSWORD
 ```
 
 ---

@@ -1,0 +1,38 @@
+# UPS Battery Remote Shutdown Configuration — example template.
+#
+# Copy this file to: config/ups-battery-shutdown.<hostname>.conf
+# Or run `sudo ./scripts/ups-service.sh` to generate one interactively.
+# The matching host-specific file is gitignored.
+
+# UPS name and host as reported by `upsc -l` (e.g. `myups@localhost`).
+UPS=myups@localhost
+
+# Battery % at which remote shutdown triggers (only when on battery).
+THRESHOLD=50
+
+# Space-separated list of `user@host` targets to SSH into on threshold.
+REMOTE_NODES="myuser@control-node"
+
+# How often (seconds) the daemon checks the UPS.
+POLL_INTERVAL=30
+
+# Private key used for passwordless SSH to remote nodes.
+SSH_KEY=/root/.ssh/id_ed25519_ups
+
+# Default command run on each remote node when shutdown is triggered.
+# Script paths (e.g. `~/shutdown.sh`) are wrapped with nohup so SSH exits
+# cleanly; bare commands (e.g. `poweroff`) are run inline.
+REMOTE_SHUTDOWN_CMD=~/shutdown.sh
+
+# Per-node command overrides — hostname with hyphens/dots replaced by `_`.
+# Use this for nodes that can't host a persistent script (e.g. UniFi devices
+# wipe `~/shutdown.sh` on firmware update).
+# CMD_dream_machine=poweroff
+# CMD_unas_express=poweroff
+
+# Optional: log file path. Date is appended automatically.
+LOG_FILE=/var/log/ups-battery-shutdown.log
+
+# Optional: Slack incoming-webhook URL for power-event notifications.
+# Leave unset to disable Slack alerts.
+# SLACK_WEBHOOK=https://hooks.slack.com/services/T.../B.../...

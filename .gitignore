@@ -17,6 +17,13 @@
 nut-credentials.txt
 secrets/
 
+# Host-specific configs (only *.example templates are tracked)
+config/*.conf
+!config/*.example
+
+# Local nut-webgui config (only the .example template is tracked)
+docker/nut-webgui.toml
+
 # Backups created by setup scripts
 backup-*/
 *.bak

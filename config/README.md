@@ -4,9 +4,11 @@ Runtime configuration for the `ups-battery-shutdown` service. One file per serve
 
 ```
 config/
-  ups-battery-shutdown.nut-pi.conf          ← Pi 1
-  ups-battery-shutdown.homelab-nut.conf     ← Pi 2
+  ups-battery-shutdown.pi-rack.conf         ← rack-mounted Pi
+  ups-battery-shutdown.pi-desk.conf         ← desk-side Pi
 ```
+
+Host-specific `*.conf` files are gitignored — only `*.example` templates are tracked. Each host generates its own config via `sudo ./scripts/ups-service.sh`.
 
 Each file is written by `ups-service.sh` on the respective host and symlinked to `/etc/ups-battery-shutdown.conf` so the installed daemon can find it.
 
