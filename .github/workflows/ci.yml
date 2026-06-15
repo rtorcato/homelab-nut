@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          set -e
+          mapfile -t scripts < <(git ls-files '*.sh')
+          if [ ${#scripts[@]} -eq 0 ]; then
+            echo "No shell scripts found"
+            exit 0
+          fi
+          echo "Checking ${#scripts[@]} script(s):"
+          printf '  %s\n' "${scripts[@]}"
+          shellcheck --severity=warning "${scripts[@]}"
+
+  compose-validate:
+    name: docker compose validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage example configs
+        working-directory: docker
+        run: |
+          cp .env.example .env
+          cp nut-webgui.toml.example nut-webgui.toml
+
+      - name: Validate compose.yml
+        working-directory: docker
+        run: docker compose -f compose.yml config --quiet
