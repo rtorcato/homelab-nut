@@ -30,8 +30,9 @@ Run with no arguments to open the interactive TUI. Subcommands like
 ` + "`init`, `plan`, `apply`, `status`" + ` are exposed for scripted use.
 
 See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
-		Version:      info.Version,
-		SilenceUsage: true,
+		Version:       info.Version,
+		SilenceUsage:  true,
+		SilenceErrors: true, // main.go owns error printing
 		// Default action when no subcommand: open the TUI.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := tea.NewProgram(tui.New(info.Version), tea.WithAltScreen()).Run()
@@ -39,8 +40,12 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 		},
 	}
 
+	cmd.PersistentFlags().StringP("inventory", "i", defaultInventoryPath,
+		"path to the inventory YAML file")
+
 	cmd.SetVersionTemplate("{{ .Version }}\n")
 	cmd.AddCommand(newVersionCmd(info))
+	cmd.AddCommand(newInventoryCmd())
 
 	return cmd
 }

@@ -20,12 +20,17 @@ var (
 )
 
 func main() {
-	if err := cli.Execute(cli.BuildInfo{
+	err := cli.Execute(cli.BuildInfo{
 		Version: version,
 		Commit:  commit,
 		Date:    date,
-	}); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	})
+	if err == nil {
+		return
 	}
+	// Empty Error() = the command already printed a formatted message.
+	if msg := err.Error(); msg != "" {
+		fmt.Fprintf(os.Stderr, "homelab-nut: %s\n", msg)
+	}
+	os.Exit(1)
 }
