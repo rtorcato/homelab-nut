@@ -20,7 +20,7 @@ Setup scripts, Docker compose, and a multi-node shutdown automation daemon for [
 
 If you're running 1–10 machines and want them to power down cleanly when the UPS battery runs low, this is for you. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add new device recipes.
 
-> 🚧 **Heading somewhere bigger.** A modern Go CLI + Bubble Tea TUI (`homelab-nut init && homelab-nut apply`) is in active development to replace the manual-script workflow with a single command run from your laptop that sets up NUT across the fleet via SSH. See [**ROADMAP.md**](ROADMAP.md). Today's scripts keep working; the new CLI will wrap them in v1, then progressively port to native Go.
+> 🚧 **Heading somewhere bigger.** A modern Go CLI + Bubble Tea TUI (`homelab-nut init && homelab-nut apply`) is in active development to replace the manual-script workflow with a single command run from your laptop that sets up NUT across the fleet via SSH. See [**ROADMAP.md**](ROADMAP.md) for the plan and [**TODOS.md**](TODOS.md) for the live status of open work. Today's scripts keep working; the new CLI will wrap them in v1, then progressively port to native Go.
 
 ---
 

@@ -20,7 +20,7 @@ LDFLAGS := -s -w \
 GO          ?= go
 GO_FLAGS    := -trimpath -ldflags '$(LDFLAGS)'
 
-.PHONY: all build run test lint tidy clean install snapshot help
+.PHONY: all build run test lint tidy clean install snapshot todos help
 
 all: build
 
@@ -52,6 +52,10 @@ install:
 ## snapshot: build cross-platform snapshot via goreleaser (requires goreleaser)
 snapshot:
 	goreleaser release --snapshot --clean --skip=publish
+
+## todos: regenerate TODOS.md from GitHub Issues (requires gh + jq)
+todos:
+	./scripts/gen-todos.sh
 
 ## clean: remove build artifacts
 clean:

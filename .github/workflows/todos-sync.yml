@@ -1,0 +1,45 @@
+name: TODOs sync
+
+# Regenerate TODOS.md whenever issues change (and once a day, as a safety net),
+# so the file stays current without manual intervention.
+on:
+  issues:
+    types: [opened, closed, reopened, edited, labeled, unlabeled, milestoned, demilestoned]
+  schedule:
+    # 13:00 UTC daily
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  sync:
+    name: regenerate TODOS.md
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install jq (gh is preinstalled)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Regenerate TODOS.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: ./scripts/gen-todos.sh
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- TODOS.md; then
+            echo "TODOS.md unchanged"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add TODOS.md
+          git commit -m "chore(todos): sync TODOS.md from GitHub Issues"
+          git push
