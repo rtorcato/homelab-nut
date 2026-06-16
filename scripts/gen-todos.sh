@@ -12,6 +12,7 @@ set -euo pipefail
 REPO="${REPO:-rtorcato/homelab-nut}"
 OUT="${OUT:-TODOS.md}"
 DATE="$(date -u +%Y-%m-%d)"
+ISSUE_URL_BASE="https://github.com/${REPO}/issues"
 
 if ! command -v gh >/dev/null; then
     echo "gh CLI is required" >&2
@@ -70,7 +71,7 @@ write_phase() {
     {
         printf '\n## %s' "$heading"
         if [[ "$epic" != "null" ]]; then
-            printf ' (#%s)' "$epic"
+            printf ' ([epic #%s](%s/%s))' "$epic" "$ISSUE_URL_BASE" "$epic"
         fi
         if [[ -n "$milestone_hint" ]]; then
             printf ' · %s' "$milestone_hint"
@@ -88,7 +89,11 @@ write_phase() {
             [[ -z "$number" ]] && continue
             local box='[ ]'
             [[ "$state" == "CLOSED" ]] && box='[x]'
-            printf -- '- %s #%s — %s\n' "$box" "$number" "$title"
+            # Escape pipes in titles so they don't break tables (not used today,
+            # but cheap insurance for any future markdown rendering).
+            local safe_title="${title//|/\\|}"
+            printf -- '- %s [#%s — %s](%s/%s)\n' \
+                "$box" "$number" "$safe_title" "$ISSUE_URL_BASE" "$number"
         done <<<"$lines"
     }
 }
