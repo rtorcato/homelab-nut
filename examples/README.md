@@ -1,0 +1,41 @@
+# 📂 examples/
+
+Drop-in configuration snippets for scraping `nut-exporter` with Prometheus and visualising it in Grafana. **None of this runs as part of this repo's Docker stack** — these are reference files you copy into your own Prometheus/Grafana setup.
+
+See [`docs/prometheus-grafana.md`](../docs/prometheus-grafana.md) for the full how-to.
+
+## Contents
+
+```
+examples/
+├── prometheus/
+│   └── prometheus.yml          # Scrape job for nut-exporter — add to your prometheus.yml
+└── grafana/
+    ├── dashboards/
+    │   └── nut-overview.json   # Importable dashboard (Grafana 10+) — 6 panels
+    └── provisioning/
+        ├── datasources/prometheus.yml   # For users who run Grafana via docker compose
+        └── dashboards/default.yml       # File-based dashboard provider (loads /etc/grafana/provisioning/dashboards)
+```
+
+## Quick paths
+
+- **Have a Prometheus already?** Copy the `nut` job from `prometheus/prometheus.yml` into your scrape configs and reload.
+- **Have a Grafana already?** In the UI: Dashboards → New → Import → upload `grafana/dashboards/nut-overview.json` → pick your Prometheus datasource.
+- **Setting up Grafana from scratch with provisioning?** Mount `grafana/provisioning/` to `/etc/grafana/provisioning/` and `grafana/dashboards/` to `/etc/grafana/provisioning/dashboards/`.
+
+## What the dashboard expects
+
+The dashboard queries the metrics published by [`druggeri/nut_exporter`](https://github.com/DRuggeri/nut_exporter):
+
+| Metric | Used in |
+|---|---|
+| `network_ups_tools_ups_status{flag="OL\|OB\|LB\|..."}` | Status panel |
+| `network_ups_tools_battery_charge` | Battery gauge, time series |
+| `network_ups_tools_battery_runtime` | Runtime stat |
+| `network_ups_tools_battery_voltage` | Voltages time series |
+| `network_ups_tools_ups_load` | Load gauge, time series |
+| `network_ups_tools_input_voltage` | Voltages time series |
+| `network_ups_tools_output_voltage` | Voltages time series |
+
+It filters by the `ups` label (multi-select) so multi-UPS setups work out of the box.
