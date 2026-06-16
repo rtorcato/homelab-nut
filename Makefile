@@ -20,7 +20,7 @@ LDFLAGS := -s -w \
 GO          ?= go
 GO_FLAGS    := -trimpath -ldflags '$(LDFLAGS)'
 
-.PHONY: all build run test lint tidy clean install snapshot todos help
+.PHONY: all build run test lint tidy clean install snapshot todos docs-cli docs-dev docs-build help
 
 all: build
 
@@ -56,6 +56,18 @@ snapshot:
 ## todos: regenerate TODOS.md from GitHub Issues (requires gh + jq)
 todos:
 	./scripts/gen-todos.sh
+
+## docs-cli: regenerate apps/docs/docs/cli/ from the CLI's cobra tree
+docs-cli:
+	$(GO) run ./cmd/gen-docs
+
+## docs-dev: run the docs site locally at http://localhost:3000
+docs-dev:
+	cd apps/docs && pnpm dev
+
+## docs-build: produce a static build of the docs site
+docs-build:
+	cd apps/docs && pnpm build
 
 ## clean: remove build artifacts
 clean:

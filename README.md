@@ -84,6 +84,7 @@ If you're running 1–10 machines and want them to power down cleanly when the U
 | [Prometheus + Grafana](docs/prometheus-grafana.md) | Scrape config + importable dashboard |
 | [Roadmap](ROADMAP.md) | Where this is heading |
 | [TODOs](TODOS.md) | Live status of open work |
+| **[Docs site](https://rtorcato.github.io/homelab-nut/)** | Full reference + auto-generated CLI docs |
 
 ---
 

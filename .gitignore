@@ -41,3 +41,11 @@ coverage.out
 coverage.html
 *.test
 *.prof
+
+# Docs site (apps/docs/)
+apps/docs/node_modules/
+apps/docs/.docusaurus/
+apps/docs/build/
+apps/docs/test-results/
+apps/docs/playwright-report/
+apps/docs/playwright/.cache/
