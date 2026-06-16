@@ -16,11 +16,11 @@ Progress: 2 / 3 closed
 
 ## Phase 1 — Skeleton ([epic #2](https://github.com/rtorcato/homelab-nut/issues/2)) · v0.1 Alpha
 
-Progress: 3 / 5 closed
+Progress: 4 / 5 closed
 
 - [x] [#11 — homelab-nut init — interactive inventory generator (charmbracelet/huh)](https://github.com/rtorcato/homelab-nut/issues/11)
 - [x] [#12 — Inventory YAML schema + validator + inventory subcommand](https://github.com/rtorcato/homelab-nut/issues/12)
-- [ ] [#13 — Build out the Bubble Tea TUI with multi-screen navigation](https://github.com/rtorcato/homelab-nut/issues/13)
+- [x] [#13 — Build out the Bubble Tea TUI with multi-screen navigation](https://github.com/rtorcato/homelab-nut/issues/13)
 - [ ] [#14 — Rewrite README hero to lead with the CLI + add demo gif placeholder](https://github.com/rtorcato/homelab-nut/issues/14)
 - [x] [#16 — Update main README to explain what homelab-nut does + introduce the CLI direction](https://github.com/rtorcato/homelab-nut/issues/16)
 
