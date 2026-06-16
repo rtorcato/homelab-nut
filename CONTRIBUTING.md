@@ -28,6 +28,37 @@ Thanks for considering a contribution. This project is aimed at homelab and smal
    - Hosts: `myhost`, `control-node`, `pi-rack`
    - Users: `myuser`, `admin`
 4. **Host-specific configs stay out of git.** `config/*.conf` and `docker/nut-webgui.toml` are gitignored — only the `.example` templates are tracked.
+5. **TODOs link to issues.** Any `TODO` or `FIXME` in code must reference a GitHub issue — see [TODOs link to issues](#todos-link-to-issues) below.
+
+## TODOs link to issues
+
+Every `TODO` and `FIXME` comment in source code must reference a GitHub issue. CI enforces this via [`.github/workflows/todo-check.yml`](.github/workflows/todo-check.yml).
+
+**Format:**
+
+```go
+// TODO(#42): handle multi-UPS hosts where one driver reports multiple UPS
+```
+
+```bash
+# TODO(#42): handle multi-UPS hosts
+```
+
+```python
+# FIXME(#108): race condition when two daemons start simultaneously
+```
+
+**Why this rule:**
+
+- Comments rot — issues survive. Six months from now nobody remembers why a `TODO` was left.
+- A linked issue is a real conversation: design notes, who's working on it, how it interacts with other work.
+- Contributors browsing the code can click through and find work they can pick up.
+
+**What gets checked:**
+
+The CI rule scans tracked files matching `*.sh`, `*.go`, `*.py`, `*.js`, `*.ts`, `*.yaml`, `*.yml`, `*.toml` for the bare words `TODO` or `FIXME`. A match is valid only if immediately followed by `(#N)`. Markdown files are not checked — docs (including this one) often *describe* the pattern.
+
+**If you genuinely want a comment without an issue,** use a different word: `NOTE`, `XXX`, or just a regular comment. Those signal "not action-able" rather than "deferred work."
 
 ## Proposing a new shutdown recipe
 

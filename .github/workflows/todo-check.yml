@@ -1,0 +1,38 @@
+name: TODO check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  todo-check:
+    name: TODO/FIXME must reference an issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for unlinked TODO/FIXME
+        run: |
+          set -e
+          # We enforce the policy in source code, not in docs (markdown is
+          # where the policy itself is documented).
+          # Excludes this workflow file because it contains the regex literals
+          # for the very strings we're searching for.
+          bad=$(git grep -nE '\b(TODO|FIXME)\b' -- \
+            '*.sh' '*.go' '*.py' '*.js' '*.ts' '*.yaml' '*.yml' '*.toml' \
+            ':!.github/workflows/todo-check.yml' \
+            | grep -vE '\b(TODO|FIXME)\(#[0-9]+\)' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Found TODO/FIXME without an issue reference"
+            echo "$bad" | sed 's/^/  /'
+            echo
+            echo 'Policy: every TODO and FIXME must reference a GitHub issue.'
+            echo 'Format: TODO(#42): short description'
+            echo 'See CONTRIBUTING.md for the full policy.'
+            exit 1
+          fi
+          echo 'All TODOs reference issues.'
