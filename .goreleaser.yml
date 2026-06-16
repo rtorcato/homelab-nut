@@ -1,7 +1,10 @@
 # goreleaser configuration — see https://goreleaser.com
 #
-# Phase 1: produces snapshot binaries for Linux+macOS amd64+arm64.
-# Real releases (deb/rpm/Homebrew tap) land in Phase 4.
+# Builds Linux+macOS amd64+arm64. Snapshot mode (CI on every push to main)
+# uses `--snapshot`; real tagged releases (.github/workflows/release.yml)
+# publish to GitHub Releases. Tags matching v*-alpha/-beta/-rc are
+# auto-marked as pre-releases.
+# Homebrew tap + deb/rpm land in Phase 4.
 
 version: 2
 
@@ -61,3 +64,32 @@ changelog:
       - '^chore:'
       - '^ci:'
       - '^test:'
+
+release:
+  prerelease: auto   # tags with -alpha / -beta / -rc → pre-release on GitHub
+  draft: false
+  name_template: '{{ .Tag }}'
+  header: |
+    ## homelab-nut {{ .Tag }}
+
+    Run `homelab-nut` (no args) to open the TUI, or use subcommands
+    (`init`, `inventory list|validate|show|edit`, `version`) for scripted use.
+
+    See [ROADMAP.md](https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md)
+    for what's coming, [TODOS.md](https://github.com/rtorcato/homelab-nut/blob/main/TODOS.md)
+    for live progress.
+
+    ### Install
+
+    Download the archive for your OS/arch below and unpack it:
+
+    ```sh
+    tar -xzf homelab-nut_*_$(uname -s)_$(uname -m).tar.gz
+    sudo install homelab-nut /usr/local/bin/
+    homelab-nut version
+    ```
+
+    Homebrew tap and `install.sh` are coming in Phase 4.
+  footer: |
+    ---
+    **Verify checksums:** `shasum -a 256 -c checksums.txt`

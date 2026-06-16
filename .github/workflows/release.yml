@@ -1,0 +1,34 @@
+name: Release
+
+# Triggered by pushing a tag like v0.1.0 or v0.1.0-alpha.
+# Builds cross-platform archives via goreleaser and publishes a GitHub
+# Release. Tags with -alpha / -beta / -rc are marked as pre-releases
+# (configured in .goreleaser.yml: release.prerelease: auto).
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # publish the release + upload assets
+
+jobs:
+  goreleaser:
+    name: goreleaser release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so goreleaser can build the changelog
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
