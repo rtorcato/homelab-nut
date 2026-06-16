@@ -1,16 +1,67 @@
 ![homelab-nut](cover.png)
 
-# Homelab NUT (Network UPS Tools)
+# homelab-nut
 
-Setup scripts, Docker compose, and a multi-node shutdown automation daemon for [Network UPS Tools (NUT)](https://networkupstools.org/) — built for homelab and small-lab operators.
+**Network UPS Tools, set up from your laptop.**
+
+Wire up [Network UPS Tools (NUT)](https://networkupstools.org/) across a homelab — monitor your UPS, push notifications when power events happen, and gracefully shut everything down when the battery runs low. Built for people running 1–10 machines, not enterprise fleets.
+
+---
+
+## The problem
+
+Getting NUT to coordinate graceful shutdown across more than one machine is a multi-day project: install `nut-server` on the host with the UPS, configure `/etc/nut/*.conf` by hand, install `nut-client` on every other machine, generate SSH keys, write a shutdown script, install a systemd unit, configure the threshold logic, hook up notifications. Most people give up halfway and just hope the UPS lasts long enough.
+
+This repo collapses that to a few commands. Setup scripts handle the bash plumbing today; a modern Go CLI + TUI is in active development to run the whole thing from one machine via SSH.
+
+## What homelab-nut does
+
+- **Sets up NUT** — server, clients, and Prometheus exporter — across your fleet, with `apt`/`systemd` configured the way it should be
+- **Coordinates graceful shutdown** — a custom systemd daemon polls battery state and SSHes into your other machines to power them down when battery drops below a threshold
+- **Handles device quirks** — per-host shutdown recipes for UniFi gear (Dream Machine, UNAS), NAS appliances, smart TVs — anything that doesn't accept a normal SSH script
+- **Sends notifications** — Slack, Discord, Pushover, Telegram, ntfy on power events
+- **Ships a monitoring stack** — Docker compose with [nut-webgui](https://github.com/SuperioOne/nut_webgui) for status, `druggeri/nut_exporter` for Prometheus, and an importable Grafana dashboard
+
+## What the CLI will look like
+
+The current path is the bash scripts in [`scripts/`](scripts/). A Go CLI + Bubble Tea TUI is being built so you'll instead run:
+
+```bash
+homelab-nut init        # interactive: describe your hosts and their roles
+homelab-nut apply       # SSH out, install + configure NUT across the fleet
+homelab-nut status      # live UPS dashboard
+homelab-nut             # full TUI for ongoing ops
+```
+
+Today's scripts keep working; the new CLI wraps them over SSH in v1, then progressively ports the logic to native Go. See [**ROADMAP.md**](ROADMAP.md) for the plan and [**TODOS.md**](TODOS.md) for live status of open work.
+
+## Quick Start
+
+The simplest path that exists today — bash scripts run directly on the host with the UPS:
+
+```bash
+git clone https://github.com/rtorcato/homelab-nut.git
+cd homelab-nut
+
+# On the host with the UPS attached (Debian/Ubuntu):
+sudo ./scripts/setup-server.sh myups usbhid-ups
+
+# Set up coordinated remote shutdown (interactive wizard):
+sudo ./scripts/ups-service.sh
+
+# Check status from anywhere:
+./ups-status.sh
+```
+
+Need a different path? See [Other setup options](#other-setup-options) below — Docker stack, Prometheus exporter, manual NUT, remote-only clients, etc.
 
 ## Status / Scope
 
 **In scope:**
 - Turnkey NUT server/client/exporter setup for Debian/Ubuntu
-- A custom systemd daemon that polls battery and coordinates SSH-based shutdown across multiple remote nodes (with per-node command overrides for UniFi, NAS, etc.)
-- Slack / Discord / Pushover / Telegram notification hooks
-- Drop-in Docker stack for nut-exporter (Prometheus) + [nut-webgui](https://github.com/SuperioOne/nut_webgui) (status UI)
+- Multi-node shutdown automation with per-host command overrides
+- Notification integrations (Slack/Discord/Pushover/Telegram/ntfy)
+- Docker stack for nut-exporter + nut-webgui
 - Reference Grafana dashboard and Prometheus scrape config
 
 **Out of scope:**
@@ -18,21 +69,98 @@ Setup scripts, Docker compose, and a multi-node shutdown automation daemon for [
 - Enterprise / HA cluster scenarios
 - Distro packaging (apt/rpm/etc.)
 
-If you're running 1–10 machines and want them to power down cleanly when the UPS battery runs low, this is for you. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add new device recipes.
+If you're running 1–10 machines and want them to power down cleanly when the UPS battery runs low, this is for you.
 
-> 🚧 **Heading somewhere bigger.** A modern Go CLI + Bubble Tea TUI (`homelab-nut init && homelab-nut apply`) is in active development to replace the manual-script workflow with a single command run from your laptop that sets up NUT across the fleet via SSH. See [**ROADMAP.md**](ROADMAP.md) for the plan and [**TODOS.md**](TODOS.md) for the live status of open work. Today's scripts keep working; the new CLI will wrap them in v1, then progressively port to native Go.
+## Documentation
+
+| Document | Description |
+|---|---|
+| [Server Setup](docs/server-setup.md) | Install and configure NUT server |
+| [Client Setup](docs/client-setup.md) | Configure clients to monitor a remote UPS |
+| [CLI Reference](docs/cli-reference.md) | NUT command-line tools and usage |
+| [Docker Setup](docs/docker-setup.md) | Docker stack: nut-webgui + Prometheus exporter |
+| [Notifications](docs/notifications.md) | Slack, Discord, Pushover, Telegram |
+| [Smart Shutdown](docs/smart-shutdown.md) | UniFi, LG TVs, NAS via Home Assistant |
+| [Prometheus + Grafana](docs/prometheus-grafana.md) | Scrape config + importable dashboard |
+| [Roadmap](ROADMAP.md) | Where this is heading |
+| [TODOs](TODOS.md) | Live status of open work |
 
 ---
 
-## Overview
+## Other setup options
 
-NUT allows you to:
-- Monitor UPS status (battery level, load, input/output voltage, etc.)
-- Execute actions on power events (shutdown systems gracefully on low battery)
-- Share UPS status across multiple machines on your network
-- Support for 100+ different UPS manufacturers
+<details>
+<summary><b>Docker monitoring (nut-webgui + Prometheus exporter)</b></summary>
 
-## Architecture
+The Docker stack runs **alongside** a bare-metal `nut-server` (it does not run its own copy to avoid USB/port conflicts). Two services: `nut-exporter` (Prometheus metrics) and `nut-webgui` (status UI).
+
+```bash
+cd docker
+cp .env.example .env                            # edit: NUT_HOST, UPS_NAME
+cp nut-webgui.toml.example nut-webgui.toml      # add a [upsd.<name>] section per server
+docker compose up -d
+```
+
+- **Web UI** (nut-webgui): http://localhost:9000
+- **Prometheus exporter**: http://localhost:9199/ups_metrics
+
+Prometheus and Grafana are intentionally not included — host them elsewhere and point them at this host's exporter. See [docs/prometheus-grafana.md](docs/prometheus-grafana.md) for setup.
+
+</details>
+
+<details>
+<summary><b>Bare-metal Prometheus exporter (no Docker)</b></summary>
+
+For low-resource hosts (Pi Zero, Pi Zero 2 W) where Docker is overkill, install `druggeri/nut_exporter` as a hardened systemd service:
+
+```bash
+sudo ./scripts/setup-exporter.sh                                   # localhost, no auth
+sudo ./scripts/setup-exporter.sh 192.0.2.10 upsmon_remote <pwd>    # remote NUT server
+```
+
+Auto-detects architecture (amd64/arm64/arm/386), pulls the latest release, runs as a dedicated unprivileged user under `ProtectSystem=strict` / `NoNewPrivileges`.
+
+Status from anywhere with just curl:
+```bash
+./scripts/exporter-status.sh http://192.0.2.10:9199 myups
+```
+
+</details>
+
+<details>
+<summary><b>NUT client only (remote machines)</b></summary>
+
+For a machine that monitors a remote UPS over the network (no UPS attached directly):
+
+```bash
+sudo ./scripts/setup-client.sh 192.0.2.10 myups <password>
+#                              ^server     ^ups  ^password from setup-server.sh
+```
+
+</details>
+
+<details>
+<summary><b>Manual NUT setup (any distro)</b></summary>
+
+```bash
+# Server
+sudo apt install nut
+sudo nano /etc/nut/ups.conf       # UPS driver config
+sudo nano /etc/nut/upsd.conf      # daemon config
+sudo nano /etc/nut/upsd.users     # users + passwords
+sudo systemctl enable --now nut-server
+
+# Client
+sudo apt install nut-client
+sudo nano /etc/nut/nut.conf
+sudo nano /etc/nut/upsmon.conf
+sudo systemctl enable --now nut-client
+```
+
+</details>
+
+<details>
+<summary><b>How it fits together</b></summary>
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -40,224 +168,40 @@ NUT allows you to:
 │  (USB/Serial)   │     │  (nut-server)   │     │   (nut-client)  │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
                               │                        │
-                              │                        │
                         Monitors UPS            Receives status
                         Shares data             Triggers shutdown
 ```
 
-## Documentation
+`homelab-nut` adds a custom daemon on the NUT server host that polls battery state and coordinates SSH-based shutdown across multiple remote nodes (with per-host command overrides for devices that can't host a shutdown script).
 
-| Document | Description |
-|----------|-------------|
-| [Server Setup](docs/server-setup.md) | How to install and configure NUT server |
-| [Client Setup](docs/client-setup.md) | How to configure NUT clients to monitor remote UPS |
-| [CLI Reference](docs/cli-reference.md) | NUT command-line tools and usage |
-| [Docker Setup](docs/docker-setup.md) | Run NUT in Docker with web UI and monitoring |
-| [Notifications](docs/notifications.md) | Slack, Discord, Pushover, Telegram alerts |
-| [Smart Shutdown](docs/smart-shutdown.md) | Shutdown UniFi, LG TVs, NAS via Home Assistant |
-| [Prometheus + Grafana](docs/prometheus-grafana.md) | Scrape config + importable dashboard JSON |
+</details>
 
-### Prometheus exporter, two ways
+## Supported platforms
 
-The Prometheus exporter (`druggeri/nut_exporter`) can run either inside the
-Docker stack (Option 2 below) or as a bare-metal systemd service (Option 4).
-Both expose the same metrics on the same port — pick whichever fits the host:
+Debian / Ubuntu (primary), Raspberry Pi OS, Proxmox VE, TrueNAS, anywhere `apt`/`systemd` work. RHEL/Fedora and Alpine are on the roadmap.
 
-- **Docker** when the host already runs Docker / Compose for other services.
-- **Bare-metal** for low-resource hosts where Docker overhead matters
-  (Pi Zero, Pi Zero 2 W, OpenWrt boxes, etc.).
-
-## Quick Start
-
-### Option 1: Automated Setup Scripts
-
-```bash
-# Server setup (Debian/Ubuntu)
-sudo ./scripts/setup-server.sh myups usbhid-ups
-
-# Client setup (provide server IP, UPS name, password from server setup)
-sudo ./scripts/setup-client.sh 192.168.1.10 myups secretpassword
-
-# Check status (auto-discovers the local UPS; or pass UPS@HOST explicitly)
-./ups-status.sh
-
-# View credentials stored by setup-server.sh
-./scripts/show-credentials.sh
-# or directly:
-sudo cat /root/nut-credentials.txt
-
-# Trigger a UPS battery self-test (must run on the host the UPS is attached to)
-./scripts/test-battery.sh           # quick test (default)
-./scripts/test-battery.sh --deep    # deep test
-./scripts/test-battery.sh --status  # show last test result
-./scripts/test-battery.sh --list    # list supported test commands
-```
-
-### Option 2: Docker monitoring on top of bare-metal NUT
-
-The Docker stack runs **alongside** a bare-metal `nut-server` (it does not
-run its own copy of `nut-server` to avoid USB/port conflicts). Two services:
-
-- `nut-exporter` — Prometheus metrics endpoint (scrape from a remote Prometheus)
-- `nut-webgui` — web UI for the UPS
-
-Prometheus and Grafana are intentionally not included — host them elsewhere
-and point them at this host's `nut-exporter`.
-
-Set up bare-metal NUT first with `setup-server.sh`, then:
-
-```bash
-cd docker
-cp .env.example .env
-# Edit .env: set NUT_HOST and UPS_NAME for the nut-exporter
-
-cp nut-webgui.toml.example nut-webgui.toml
-# Edit nut-webgui.toml: add a [upsd.<name>] section per NUT server.
-
-docker compose up -d
-```
-
-The webgui supports multiple NUT servers via `docker/nut-webgui.toml` — add a
-`[upsd.<name>]` section for each host running `nut-server`.
-
-Access:
-- **Web UI** (nut-webgui): http://localhost:9000
-- **Prometheus exporter**: http://localhost:9199/ups_metrics
-
-### Option 3: Bare-metal Prometheus exporter (no Docker)
-
-For low-resource hosts (Pi Zero, Pi Zero 2 W) where Docker is overkill, install
-the same `druggeri/nut_exporter` binary as a systemd service:
-
-```bash
-# Defaults: scrape localhost, no auth, listen on :9199
-sudo ./scripts/setup-exporter.sh
-
-# Remote NUT server with auth (use the upsmon_remote password from
-# /root/nut-credentials.txt on the NUT server)
-sudo ./scripts/setup-exporter.sh 192.168.1.10 upsmon_remote <password>
-```
-
-The script auto-detects architecture (`amd64`, `arm64`, `arm`, `386`) and pulls
-the latest release from GitHub. Pin a version with `NUT_EXPORTER_VERSION=v3.2.5`
-or change the listen port with `NUT_EXPORTER_PORT=9199`.
-
-Credentials live in `/etc/default/nut-exporter` (mode 0640) and the service
-runs as a dedicated unprivileged `nut-exporter` user under hardened systemd
-sandboxing (`ProtectSystem=strict`, `NoNewPrivileges`, etc.).
-
-To check status from any machine without installing NUT or `upsc`:
-
-```bash
-./scripts/exporter-status.sh http://192.0.2.10:9199 myups
-./scripts/exporter-status.sh http://192.0.2.10:9199 myups --json   # machine-readable
-./scripts/exporter-status.sh http://192.0.2.10:9199 myups --raw    # all metrics
-```
-
-### Option 4: Remote Shutdown Service
-
-Automatically SSH into a remote node and run `~/shutdown.sh` when the UPS battery drops below a threshold. Managed by `ups-service.sh` on the NUT server (Pi).
-
-```bash
-# First run — interactive setup wizard (SSH keys, remote node, threshold)
-sudo ./scripts/ups-service.sh
-
-# Subsequent runs — management menu
-sudo ./scripts/ups-service.sh
-
-# Or use subcommands directly
-sudo ./scripts/ups-service.sh status
-sudo ./scripts/ups-service.sh set-threshold 40
-sudo ./scripts/ups-service.sh logs
-sudo ./scripts/ups-service.sh remove
-```
-
-Config is written to `config/ups-battery-shutdown.<hostname>.conf` in the repo and symlinked to `/etc/ups-battery-shutdown.conf`. Multiple NUT servers can share the same repo — each gets its own config file scoped by hostname.
-
-### Option 5: Manual Server Setup
-
-```bash
-# Install NUT
-sudo apt install nut
-
-# Configure UPS driver, server, and users
-sudo nano /etc/nut/ups.conf
-sudo nano /etc/nut/upsd.conf
-sudo nano /etc/nut/upsd.users
-
-# Start services
-sudo systemctl enable nut-server
-sudo systemctl start nut-server
-```
-
-### Option 6: Manual Client Setup (remote machines)
-
-```bash
-# Install NUT client
-sudo apt install nut-client
-
-# Configure connection to server
-sudo nano /etc/nut/nut.conf
-sudo nano /etc/nut/upsmon.conf
-
-# Start monitoring
-sudo systemctl enable nut-client
-sudo systemctl start nut-client
-```
-
-## Supported Platforms
-
-- Debian / Ubuntu
-- RHEL / CentOS / Fedora
-- Proxmox VE
-- TrueNAS
-- Docker
-
-## Project Structure
+## Project structure
 
 ```
 homelab-nut/
-├── README.md
-├── ups-status.sh                        # Pretty-printed UPS status (run on the Pi)
-├── upsc-output.md                       # upsc variable reference (APC Back-UPS ES 650G1)
-├── docs/
-│   ├── server-setup.md      # Server installation guide
-│   ├── client-setup.md      # Client configuration guide
-│   ├── cli-reference.md     # NUT CLI commands
-│   ├── docker-setup.md      # Docker deployment guide
-│   ├── notifications.md     # Alert configuration
-│   └── smart-shutdown.md    # Device shutdown automation
-├── docker/
-│   ├── compose.yml                   # nut-webgui + Prometheus exporter
-│   ├── nut-webgui.toml.example       # Template for nut-webgui.toml (copy to nut-webgui.toml)
-│   └── .env.example                  # Environment template
-├── config/
-│   ├── ups-battery-shutdown.conf.example      # Template for the daemon config
-│   └── ups-battery-shutdown.<hostname>.conf   # Per-host config (gitignored, generated by ups-service.sh)
-├── examples/                  # Reference configs to drop into your own Prom/Grafana
-│   ├── grafana/
-│   │   ├── dashboards/nut-overview.json   # Importable dashboard (6 panels)
-│   │   └── provisioning/                  # Datasource + dashboard provider for provisioned setups
-│   └── prometheus/prometheus.yml          # Scrape job snippet
-└── scripts/
-    ├── setup-server.sh        # Automated NUT server setup
-    ├── setup-client.sh        # Automated NUT client setup
-    ├── setup-exporter.sh      # Bare-metal nut_exporter (no Docker)
-    ├── exporter-status.sh     # Status check via nut_exporter HTTP
-    ├── test-battery.sh        # Trigger UPS battery self-test (localhost only)
-    ├── show-credentials.sh    # Print /root/nut-credentials.txt via sudo
-    ├── ups-service.sh         # Remote shutdown service manager (setup + menu)
-    └── services/
-        └── battery-shutdown.sh   # Daemon — installed by ups-service.sh, not run directly
+├── cmd/homelab-nut/         # Go CLI entry point (in development)
+├── internal/                # CLI/TUI/inventory packages
+├── scripts/                 # Bash setup + shutdown scripts (today's path)
+├── docker/                  # Docker stack: nut-exporter + nut-webgui
+├── docs/                    # User-facing docs
+├── examples/                # Inventory examples + Grafana dashboard
+├── config/                  # Daemon config (host-specific, gitignored)
+├── ROADMAP.md
+├── TODOS.md
+└── CONTRIBUTING.md
 ```
 
 ## Resources
 
-- [NUT Official Documentation](https://networkupstools.org/docs/user-manual.chunked/index.html)
-- [NUT Hardware Compatibility List](https://networkupstools.org/stable-hcl.html)
-- [NUT GitHub Repository](https://github.com/networkupstools/nut)
-- [nut-webgui (web UI used by the Docker stack)](https://github.com/SuperioOne/nut_webgui)
-- [druggeri/nut_exporter (Prometheus exporter)](https://github.com/DRuggeri/nut_exporter)
+- [NUT Documentation](https://networkupstools.org/docs/user-manual.chunked/index.html)
+- [NUT Hardware Compatibility](https://networkupstools.org/stable-hcl.html)
+- [nut-webgui](https://github.com/SuperioOne/nut_webgui) — the web UI used by the Docker stack
+- [druggeri/nut_exporter](https://github.com/DRuggeri/nut_exporter) — Prometheus exporter
 
 ## Contributing
 
