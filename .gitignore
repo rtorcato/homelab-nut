@@ -33,3 +33,11 @@ backup-*/
 *.log
 logs/*
 !logs/.gitkeep
+
+# Go build artifacts
+bin/
+dist/
+coverage.out
+coverage.html
+*.test
+*.prof
