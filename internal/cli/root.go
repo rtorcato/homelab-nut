@@ -46,6 +46,7 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 	cmd.SetVersionTemplate("{{ .Version }}\n")
 	cmd.AddCommand(newVersionCmd(info))
 	cmd.AddCommand(newInventoryCmd())
+	cmd.AddCommand(newInitCmd())
 
 	return cmd
 }
