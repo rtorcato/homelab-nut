@@ -34,9 +34,9 @@ _No children filed yet._
 
 ## Phase 4 — Polish + distribution ([epic #5](https://github.com/rtorcato/homelab-nut/issues/5)) · v1.0 GA
 
-Progress: 0 / 1 closed
+Progress: 1 / 1 closed
 
-- [ ] [#15 — Add Docusaurus docs site at apps/docs/ (homelab-nut.dev landing + reference)](https://github.com/rtorcato/homelab-nut/issues/15)
+- [x] [#15 — Add Docusaurus docs site at apps/docs/ (homelab-nut.dev landing + reference)](https://github.com/rtorcato/homelab-nut/issues/15)
 
 ## Phase 5 — Promotion ([epic #6](https://github.com/rtorcato/homelab-nut/issues/6)) · v1.0 GA
 
