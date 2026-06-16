@@ -1,67 +1,296 @@
 // Package tui hosts the Bubble Tea models that drive the interactive UI.
 //
-// Phase 1 (this file): a placeholder shell that proves the loop works and
-// quits cleanly. Future phases add real screens (inventory, apply, status).
+// Phase 1 introduces a multi-screen shell: Dashboard, Hosts list, Host
+// detail, Help. Each screen is rendered by a method on rootModel. Real
+// network-backed status and apply screens land in Phase 2 and 3.
 package tui
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/rtorcato/homelab-nut/internal/inventory"
 )
 
-// New returns the root Bubble Tea model for the interactive TUI.
-func New(version string) tea.Model {
-	return placeholderModel{version: version}
+// screen identifies a top-level view in the TUI.
+type screen int
+
+const (
+	screenDashboard screen = iota
+	screenHosts
+	screenHost
+	screenHelp
+)
+
+func (s screen) String() string {
+	switch s {
+	case screenDashboard:
+		return "Dashboard"
+	case screenHosts:
+		return "Hosts"
+	case screenHost:
+		return "Host"
+	case screenHelp:
+		return "Help"
+	}
+	return ""
 }
 
-type placeholderModel struct {
-	version string
-	width   int
-	height  int
+// tabOrder is the navigation order for tab / shift+tab and number keys.
+// screenHost isn't in the tab bar — you reach it by pressing enter on Hosts.
+var tabOrder = []screen{screenDashboard, screenHosts, screenHelp}
+
+// New returns the root Bubble Tea model.
+//
+// inventoryPath is consulted at startup; if the file doesn't exist or
+// fails to validate, the loadErr is shown in-place rather than crashing
+// the TUI, so users get a clear "run init" prompt.
+func New(version, inventoryPath string) tea.Model {
+	m := rootModel{
+		version:       version,
+		inventoryPath: inventoryPath,
+		current:       screenDashboard,
+	}
+	if inventoryPath != "" {
+		inv, err := inventory.Load(inventoryPath)
+		m.inv = inv
+		m.loadErr = err
+	}
+	return m
 }
 
-func (m placeholderModel) Init() tea.Cmd { return nil }
+type rootModel struct {
+	version       string
+	inventoryPath string
+	inv           *inventory.Inventory
+	loadErr       error
+	current       screen
+	selectedHost  int
+	width, height int
+}
 
-func (m placeholderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m rootModel) Init() tea.Cmd { return nil }
+
+func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		return m, nil
 	case tea.KeyMsg:
+		return m.handleKey(msg)
+	}
+	return m, nil
+}
+
+func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Global keys always take priority.
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		if m.current == screenHost {
+			m.current = screenHosts
+		}
+		return m, nil
+	case "tab":
+		m.current = cycle(m.current, +1)
+		return m, nil
+	case "shift+tab":
+		m.current = cycle(m.current, -1)
+		return m, nil
+	case "1":
+		m.current = screenDashboard
+		return m, nil
+	case "2":
+		m.current = screenHosts
+		return m, nil
+	case "3", "?":
+		m.current = screenHelp
+		return m, nil
+	}
+
+	// Screen-local navigation.
+	switch m.current {
+	case screenHosts:
 		switch msg.String() {
-		case "q", "ctrl+c", "esc":
-			return m, tea.Quit
+		case "up", "k":
+			if m.selectedHost > 0 {
+				m.selectedHost--
+			}
+		case "down", "j":
+			if m.inv != nil && m.selectedHost < len(m.inv.Hosts)-1 {
+				m.selectedHost++
+			}
+		case "enter":
+			if m.inv != nil && len(m.inv.Hosts) > 0 {
+				m.current = screenHost
+			}
 		}
 	}
 	return m, nil
 }
 
-var (
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#FFD166")).
-			Padding(0, 1)
-
-	hintStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Italic(true)
-
-	bodyStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#7d56f4")).
-			Padding(1, 2).
-			Margin(1, 2)
-)
-
-func (m placeholderModel) View() string {
-	title := titleStyle.Render(fmt.Sprintf("homelab-nut %s", m.version))
-	body := bodyStyle.Render(
-		"Welcome.\n\n" +
-			"This is the Phase 1 TUI shell. Real screens — inventory,\n" +
-			"apply, status — land in Phase 2 and 3.\n\n" +
-			"Track progress: https://github.com/rtorcato/homelab-nut/issues",
-	)
-	hint := hintStyle.Render("press q or esc to quit")
-	return fmt.Sprintf("%s\n%s\n%s\n", title, body, hint)
+// cycle returns the next screen in tabOrder. dir is +1 or -1.
+func cycle(cur screen, dir int) screen {
+	idx := 0
+	for i, s := range tabOrder {
+		if s == cur {
+			idx = i
+			break
+		}
+	}
+	n := len(tabOrder)
+	return tabOrder[(idx+dir+n)%n]
 }
+
+func (m rootModel) View() string {
+	var b strings.Builder
+	b.WriteString(m.renderTabBar())
+	b.WriteString("\n")
+
+	switch m.current {
+	case screenDashboard:
+		b.WriteString(m.viewDashboard())
+	case screenHosts:
+		b.WriteString(m.viewHosts())
+	case screenHost:
+		b.WriteString(m.viewHost())
+	case screenHelp:
+		b.WriteString(m.viewHelp())
+	}
+
+	b.WriteString("\n")
+	b.WriteString(m.renderStatusBar())
+	return b.String()
+}
+
+func (m rootModel) renderTabBar() string {
+	title := titleStyle.Render(fmt.Sprintf("homelab-nut %s", m.version))
+	tabs := make([]string, 0, len(tabOrder))
+	for i, s := range tabOrder {
+		label := fmt.Sprintf("%d %s", i+1, s)
+		if s == m.current || (s == screenHosts && m.current == screenHost) {
+			tabs = append(tabs, activeTabStyle.Render(label))
+		} else {
+			tabs = append(tabs, tabStyle.Render(label))
+		}
+	}
+	return tabBarStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, title, strings.Repeat(" ", 2), strings.Join(tabs, " ")))
+}
+
+func (m rootModel) renderStatusBar() string {
+	hints := []string{"tab cycles", "esc backs out", "? help", "q quits"}
+	if m.current == screenHosts {
+		hints = append([]string{"↑↓ select", "enter drill in"}, hints...)
+	}
+	return statusBarStyle.Render(strings.Join(hints, " · "))
+}
+
+func (m rootModel) viewDashboard() string {
+	if m.inv == nil || m.loadErr != nil || len(m.inv.Hosts) == 0 {
+		return bodyStyle.Render(m.emptyDashboard())
+	}
+
+	rolesByHost := func(h inventory.Host) string {
+		strs := make([]string, len(h.Roles))
+		for i, r := range h.Roles {
+			strs[i] = r.String()
+		}
+		return strings.Join(strs, ", ")
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s %d host(s) configured at %s\n\n", titleStyle.Render("Inventory:"), len(m.inv.Hosts), m.inventoryPath)
+	for _, h := range m.inv.Hosts {
+		fmt.Fprintf(&b, "  %s · %s · %s\n", h.Name, h.Address, rolesByHost(h))
+	}
+	if m.inv.ShutdownDaemon != nil {
+		d := m.inv.ShutdownDaemon
+		fmt.Fprintf(&b, "\n%s threshold=%d%%  poll=%ds", titleStyle.Render("Daemon:"), d.Threshold, d.PollInterval)
+	}
+	b.WriteString("\n\nReal-time UPS status lands in Phase 3 (#4).")
+	return bodyStyle.Render(b.String())
+}
+
+func (m rootModel) emptyDashboard() string {
+	var msg string
+	switch {
+	case m.loadErr != nil && errors.Is(m.loadErr, errFileMissing):
+		msg = "No inventory found at " + m.inventoryPath + "."
+	case m.loadErr != nil:
+		msg = "Could not load " + m.inventoryPath + ":\n  " + m.loadErr.Error()
+	default:
+		msg = "Inventory is empty."
+	}
+	return emptyStateStyle.Render(msg + "\n\nRun  homelab-nut init  to create one.")
+}
+
+func (m rootModel) viewHosts() string {
+	if m.inv == nil || len(m.inv.Hosts) == 0 {
+		return bodyStyle.Render(m.emptyDashboard())
+	}
+	var b strings.Builder
+	for i, h := range m.inv.Hosts {
+		line := fmt.Sprintf("%s  %s  %s", h.Name, h.Address, h.User)
+		if i == m.selectedHost {
+			fmt.Fprintf(&b, "▸ %s\n", activeHostItemStyle.Render(line))
+		} else {
+			fmt.Fprintf(&b, "  %s\n", hostItemStyle.Render(line))
+		}
+	}
+	return bodyStyle.Render(b.String())
+}
+
+func (m rootModel) viewHost() string {
+	if m.inv == nil || m.selectedHost >= len(m.inv.Hosts) {
+		return bodyStyle.Render(emptyStateStyle.Render("No host selected. Press esc to return."))
+	}
+	h := m.inv.Hosts[m.selectedHost]
+	roles := make([]string, len(h.Roles))
+	for i, r := range h.Roles {
+		roles[i] = r.String()
+	}
+	var b strings.Builder
+	row := func(label, value string) {
+		fmt.Fprintf(&b, "%s %s\n", labelStyle.Render(label), value)
+	}
+	row("name", h.Name)
+	row("address", h.Address)
+	row("user", h.User)
+	row("roles", strings.Join(roles, ", "))
+	if h.UPS != nil {
+		row("ups", fmt.Sprintf("name=%s driver=%s", h.UPS.Name, h.UPS.Driver))
+	}
+	if h.Shutdown != nil {
+		row("shutdown", h.Shutdown.Command)
+	}
+	return bodyStyle.Render(b.String())
+}
+
+func (m rootModel) viewHelp() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("Keybindings"))
+	b.WriteString("\n\n")
+	rows := [][2]string{
+		{"tab / shift+tab", "cycle screens"},
+		{"1 / 2 / 3", "jump to Dashboard / Hosts / Help"},
+		{"?", "open this help"},
+		{"↑ ↓ / k j", "select host (Hosts screen)"},
+		{"enter", "drill into selected host"},
+		{"esc", "go back one screen"},
+		{"q / ctrl+c", "quit"},
+	}
+	for _, r := range rows {
+		fmt.Fprintf(&b, "  %s %s\n", labelStyle.Width(20).Render(r[0]), r[1])
+	}
+	b.WriteString("\n")
+	b.WriteString(hintStyle.Render("More screens (apply, live status, logs) land in Phase 2 and 3."))
+	return bodyStyle.Render(b.String())
+}
+
+// errFileMissing is a sentinel so the Dashboard can distinguish "no
+// inventory file" from "file exists but failed to parse/validate".
+var errFileMissing = errors.New("no inventory file")

@@ -35,7 +35,8 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 		SilenceErrors: true, // main.go owns error printing
 		// Default action when no subcommand: open the TUI.
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := tea.NewProgram(tui.New(info.Version), tea.WithAltScreen()).Run()
+			path, _ := cmd.Flags().GetString("inventory")
+			_, err := tea.NewProgram(tui.New(info.Version, path), tea.WithAltScreen()).Run()
 			return err
 		},
 	}
