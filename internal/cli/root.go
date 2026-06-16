@@ -20,6 +20,12 @@ func Execute(info BuildInfo) error {
 	return root.Execute()
 }
 
+// NewRootForDocs exposes the constructed Cobra tree to the docs generator
+// (cmd/gen-docs). Not intended for runtime use — Execute is the entry point.
+func NewRootForDocs(info BuildInfo) *cobra.Command {
+	return newRootCmd(info)
+}
+
 func newRootCmd(info BuildInfo) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "homelab-nut",
