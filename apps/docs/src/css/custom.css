@@ -1,0 +1,229 @@
+/**
+ * homelab-nut — Docusaurus theme.
+ *
+ * Palette sampled from cover.png: deep navy field, bright emerald for the
+ * primary accent, warm amber for the mascot / daemon / automation
+ * callouts. Dark mode is the headline; light mode is polished but
+ * secondary.
+ */
+
+/* ---------- Fonts ---------- */
+:root {
+	--ifm-font-family-base: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+		sans-serif;
+	--ifm-font-family-monospace: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+	--ifm-heading-font-weight: 800;
+	--ifm-code-font-size: 92%;
+}
+
+/* ---------- Custom design tokens ---------- */
+:root {
+	--hn-accent: #10b981; /* emerald-500 — primary */
+	--hn-accent-strong: #059669; /* emerald-600 — hover/active */
+	--hn-accent-soft: rgba(16, 185, 129, 0.12);
+	--hn-mascot: #fb923c; /* amber-400 — daemon/automation callouts */
+	--hn-bg-deep: #0a1422;
+	--hn-surface: #0f1c2e;
+	--hn-surface-2: #142841;
+	--hn-border: rgba(148, 163, 184, 0.18);
+	--hn-text-bright: #e9f5ee;
+	--hn-text-muted: #9aa4b2;
+	--hn-glow: 0 0 40px -8px rgba(16, 185, 129, 0.4);
+}
+
+/* ---------- Light theme ---------- */
+:root {
+	--ifm-color-primary: #059669;
+	--ifm-color-primary-dark: #047857;
+	--ifm-color-primary-darker: #047054;
+	--ifm-color-primary-darkest: #035c45;
+	--ifm-color-primary-light: #10b981;
+	--ifm-color-primary-lighter: #34d399;
+	--ifm-color-primary-lightest: #6ee7b7;
+
+	--ifm-background-color: #ffffff;
+	--ifm-background-surface-color: #f7faf9;
+	--ifm-navbar-background-color: rgba(255, 255, 255, 0.85);
+	--ifm-heading-color: #0a1422;
+	--ifm-font-color-base: #374151;
+	--ifm-link-color: #059669;
+	--ifm-toc-border-color: rgba(15, 28, 46, 0.1);
+	--ifm-code-background: #f3f6f9;
+	--docusaurus-highlighted-code-line-bg: rgba(16, 185, 129, 0.12);
+}
+
+/* ---------- Dark theme (default) ---------- */
+[data-theme="dark"] {
+	--ifm-color-primary: #10b981;
+	--ifm-color-primary-dark: #0ea671;
+	--ifm-color-primary-darker: #0d9c6b;
+	--ifm-color-primary-darkest: #0b8159;
+	--ifm-color-primary-light: #34d399;
+	--ifm-color-primary-lighter: #4ade80;
+	--ifm-color-primary-lightest: #6ee7b7;
+
+	--ifm-background-color: var(--hn-bg-deep);
+	--ifm-background-surface-color: var(--hn-surface);
+	--ifm-navbar-background-color: rgba(10, 20, 34, 0.85);
+	--ifm-footer-background-color: var(--hn-surface);
+	--ifm-heading-color: var(--hn-text-bright);
+	--ifm-font-color-base: var(--hn-text-muted);
+	--ifm-link-color: var(--hn-accent);
+	--ifm-toc-border-color: var(--hn-border);
+	--ifm-code-background: var(--hn-surface-2);
+	--docusaurus-highlighted-code-line-bg: rgba(16, 185, 129, 0.18);
+}
+
+/* ---------- Components ---------- */
+
+/* Hero — glowing emerald CTA */
+.hn-hero {
+	padding: 4rem 2rem 5rem;
+	text-align: center;
+	background: radial-gradient(60% 80% at 50% 0%, rgba(16, 185, 129, 0.12), transparent 70%),
+		linear-gradient(180deg, var(--hn-bg-deep) 0%, var(--hn-surface) 100%);
+	border-bottom: 1px solid var(--hn-border);
+}
+
+[data-theme="light"] .hn-hero {
+	background: radial-gradient(60% 80% at 50% 0%, rgba(16, 185, 129, 0.08), transparent 70%),
+		linear-gradient(180deg, #ffffff 0%, #f7faf9 100%);
+}
+
+.hn-hero__banner {
+	max-width: 720px;
+	width: 100%;
+	border-radius: 16px;
+	margin: 0 auto 2rem;
+	display: block;
+}
+
+.hn-hero__title {
+	font-size: clamp(2rem, 5vw, 3.5rem);
+	font-weight: 800;
+	margin: 0 0 0.5rem;
+	letter-spacing: -0.02em;
+}
+
+.hn-hero__tagline {
+	font-size: 1.25rem;
+	color: var(--hn-text-muted);
+	margin: 0 0 2rem;
+}
+
+[data-theme="light"] .hn-hero__tagline {
+	color: #5b6675;
+}
+
+.hn-hero__ctas {
+	display: flex;
+	gap: 0.75rem;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.hn-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.65rem 1.4rem;
+	border-radius: 8px;
+	font-weight: 600;
+	text-decoration: none;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hn-btn--primary {
+	background: var(--hn-accent);
+	color: #06231a;
+	box-shadow: var(--hn-glow);
+}
+
+.hn-btn--primary:hover {
+	transform: translateY(-1px);
+	background: var(--hn-accent-strong);
+	color: #06231a;
+	text-decoration: none;
+}
+
+.hn-btn--ghost {
+	background: transparent;
+	color: var(--ifm-heading-color);
+	border: 1px solid var(--hn-border);
+}
+
+.hn-btn--ghost:hover {
+	background: var(--hn-accent-soft);
+	color: var(--hn-accent);
+	text-decoration: none;
+}
+
+/* Feature grid */
+.hn-features {
+	padding: 4rem 2rem;
+	max-width: 1100px;
+	margin: 0 auto;
+}
+
+.hn-features__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 1.25rem;
+}
+
+.hn-feature {
+	padding: 1.5rem;
+	border: 1px solid var(--hn-border);
+	border-radius: 12px;
+	background: var(--ifm-background-surface-color);
+	transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.hn-feature:hover {
+	border-color: var(--hn-accent);
+	transform: translateY(-2px);
+}
+
+.hn-feature__icon {
+	width: 32px;
+	height: 32px;
+	color: var(--hn-accent);
+	margin-bottom: 0.75rem;
+}
+
+.hn-feature__title {
+	font-size: 1.05rem;
+	font-weight: 700;
+	margin: 0 0 0.4rem;
+	color: var(--ifm-heading-color);
+}
+
+.hn-feature__body {
+	font-size: 0.9rem;
+	color: var(--hn-text-muted);
+	margin: 0;
+	line-height: 1.5;
+}
+
+[data-theme="light"] .hn-feature__body {
+	color: #5b6675;
+}
+
+/* Preview block — full-bleed code sample on the landing */
+.hn-preview {
+	padding: 3rem 2rem 5rem;
+	max-width: 920px;
+	margin: 0 auto;
+}
+
+.hn-preview__title {
+	font-size: 1.6rem;
+	font-weight: 700;
+	margin: 0 0 0.5rem;
+}
+
+.hn-preview__hint {
+	color: var(--hn-text-muted);
+	margin: 0 0 1.5rem;
+	font-size: 0.95rem;
+}

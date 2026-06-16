@@ -1,0 +1,6 @@
+# pnpm build-script approvals (pnpm 11+ feature).
+# Listed packages have postinstall scripts that pnpm blocks by default
+# for security. We explicitly opt-in to the ones we need.
+allowBuilds:
+  '@biomejs/biome': true   # CLI binary — needed for `pnpm lint`
+  core-js: false           # polyfill — no scripts required

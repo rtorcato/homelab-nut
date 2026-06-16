@@ -1,0 +1,122 @@
+name: Docs
+
+# Build + deploy the Docusaurus site under apps/docs/ to GitHub Pages.
+# PRs build but don't deploy. Path filter keeps unrelated commits from
+# wasting runner minutes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - '.github/workflows/docs-deploy.yml'
+      - 'ROADMAP.md'
+      - 'CONTRIBUTING.md'
+  pull_request:
+    paths:
+      - 'apps/docs/**'
+      - '.github/workflows/docs-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # peaceiris/actions-gh-pages writes to gh-pages branch
+
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: apps/docs/pnpm-lock.yaml
+
+      - name: Install deps
+        working-directory: apps/docs
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: apps/docs
+        run: pnpm typecheck
+
+      - name: Build
+        working-directory: apps/docs
+        run: pnpm build
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: apps/docs/build
+          retention-days: 7
+
+  e2e:
+    name: playwright smoke test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: apps/docs/pnpm-lock.yaml
+
+      - name: Install deps
+        working-directory: apps/docs
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        working-directory: apps/docs
+        run: pnpm test:e2e:install
+
+      - name: Run smoke test
+        working-directory: apps/docs
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/docs/playwright-report
+          retention-days: 7
+
+  deploy:
+    name: deploy to gh-pages
+    runs-on: ubuntu-latest
+    needs: [build, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+
+      - name: Publish
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "docs: deploy site from ${{ github.sha }}"
