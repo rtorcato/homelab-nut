@@ -7,8 +7,6 @@
 // at once rather than one-at-a-time.
 package inventory
 
-import "fmt"
-
 // Inventory is the root document. Loaded from homelab-nut.yaml.
 type Inventory struct {
 	Hosts           []Host          `yaml:"hosts"`
@@ -110,8 +108,3 @@ func (inv *Inventory) HostsWithRole(r Role) []*Host {
 	return out
 }
 
-// errFieldRequired is a small helper used by both load and validate to
-// generate consistent "required field" error text.
-func errFieldRequired(path string) error {
-	return fmt.Errorf("%s: required", path)
-}
