@@ -4,7 +4,7 @@ Roadmap work tracked as GitHub Issues, grouped by phase. **Generated** — run `
 
 > Bugs and one-off issues are tracked on GitHub directly and not listed here. This file is the index of *planned* work (issues with a `phase-*` label).
 
-_Last updated: 2026-06-16_
+_Last updated: 2026-06-17_
 
 ## Phase 0 — Foundation ([epic #1](https://github.com/rtorcato/homelab-nut/issues/1))
 
