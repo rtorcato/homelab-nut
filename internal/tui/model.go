@@ -75,7 +75,23 @@ type rootModel struct {
 	current       screen
 	selectedHost  int
 	apply         applyState
+	// exitAction is set by 'i' or 'e' keys before tea.Quit, so the
+	// wrapping cobra command can dispatch a follow-up action
+	// (run init forms, open $EDITOR) and then relaunch the TUI.
+	// "" means a normal quit with no follow-up.
+	exitAction    string
 	width, height int
+}
+
+// ExitAction extracts the action the user requested via key shortcut
+// before the TUI exited. Returns "init", "edit", or "" (normal quit).
+// Designed for the cobra command that owns the TUI program to dispatch
+// follow-up actions without needing to type-assert an unexported model.
+func ExitAction(m tea.Model) string {
+	if rm, ok := m.(rootModel); ok {
+		return rm.exitAction
+	}
+	return ""
 }
 
 func (m rootModel) Init() tea.Cmd { return nil }
@@ -141,6 +157,22 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				logBuf:    new(bytes.Buffer),
 			}
 			return m, startApply(m.inv)
+		}
+		return m, nil
+	case "i", "I":
+		// init flow is only meaningful when there's no usable inventory —
+		// otherwise the user should use `e` to edit. Refuse to trigger
+		// init over an existing valid inventory to avoid surprises.
+		if m.inv == nil || len(m.inv.Hosts) == 0 {
+			m.exitAction = "init"
+			return m, tea.Quit
+		}
+		return m, nil
+	case "e", "E":
+		// edit needs a file on disk to point $EDITOR at.
+		if m.inventoryPath != "" {
+			m.exitAction = "edit"
+			return m, tea.Quit
 		}
 		return m, nil
 	}
@@ -260,7 +292,7 @@ func (m rootModel) emptyDashboard() string {
 	default:
 		msg = "Inventory is empty."
 	}
-	return emptyStateStyle.Render(msg + "\n\nRun  homelab-nut init  to create one.")
+	return emptyStateStyle.Render(msg + "\n\nPress  i  to set up your inventory (or run `homelab-nut init` outside the TUI).")
 }
 
 func (m rootModel) viewHosts() string {
@@ -315,7 +347,9 @@ func (m rootModel) viewHelp() string {
 		{"?", "open this help"},
 		{"↑ ↓ / k j", "select host (Hosts screen)"},
 		{"enter", "drill into selected host"},
-		{"a / A", "run apply (from any screen)"},
+		{"i", "set up inventory (empty-state Dashboard only)"},
+		{"e", "edit inventory in $EDITOR (any screen)"},
+		{"a / A", "run apply (any screen)"},
 		{"esc", "go back one screen"},
 		{"q / ctrl+c", "quit"},
 	}
