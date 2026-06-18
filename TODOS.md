@@ -26,11 +26,11 @@ Progress: 4 / 5 closed
 
 ## Phase 2 — SSH + first apply ([epic #3](https://github.com/rtorcato/homelab-nut/issues/3)) · v0.1 Alpha
 
-Progress: 1 / 3 closed
+Progress: 3 / 3 closed
 
 - [x] [#17 — SSH executor — key-based auth, known_hosts, streaming output](https://github.com/rtorcato/homelab-nut/issues/17)
-- [ ] [#18 — Role interface — Detect/Plan/Apply over SSH](https://github.com/rtorcato/homelab-nut/issues/18)
-- [ ] [#19 — nut-server role — wraps scripts/setup-server.sh over SSH](https://github.com/rtorcato/homelab-nut/issues/19)
+- [x] [#18 — Role interface — Detect/Plan/Apply over SSH](https://github.com/rtorcato/homelab-nut/issues/18)
+- [x] [#19 — nut-server role — wraps scripts/setup-server.sh over SSH](https://github.com/rtorcato/homelab-nut/issues/19)
 
 ## Phase 3 — All roles + status ([epic #4](https://github.com/rtorcato/homelab-nut/issues/4)) · v0.2 Beta
 
