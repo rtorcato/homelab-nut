@@ -1,0 +1,28 @@
+version: "2"
+
+linters:
+  default: standard
+  settings:
+    errcheck:
+      # The default errcheck list is aggressive about errors that are
+      # almost always safe to ignore. The exclusions below mirror the
+      # patterns we use in this repo and across the wider Go ecosystem
+      # (Cobra, stdlib examples, k0sctl, etc.).
+      exclude-functions:
+        # fmt prints to stdout/stderr writers — if writing to a tty
+        # fails, the next thing we'd do is exit, so the error is moot.
+        - fmt.Fprint
+        - fmt.Fprintln
+        - fmt.Fprintf
+        # File close after a successful read is a no-op for correctness
+        # — any close error would have already manifested as a read or
+        # write error.
+        - (*os.File).Close
+        - (io.Closer).Close
+        # SSH session close in defer can't easily capture the error;
+        # we already get one via Wait().
+        - (*golang.org/x/crypto/ssh.Session).Close
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
