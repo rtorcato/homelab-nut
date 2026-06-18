@@ -2,29 +2,11 @@
 
 # homelab-nut
 
-**Network UPS Tools, set up from your laptop.**
+**Network UPS Tools, set up from your laptop.** One CLI to wire NUT across a homelab — server, clients, Prometheus exporter, and multi-node graceful shutdown — from a TUI for humans or `-o json` subcommands for scripts and AI agents.
 
-Wire up [Network UPS Tools (NUT)](https://networkupstools.org/) across a homelab — monitor your UPS, push notifications when power events happen, and gracefully shut everything down when the battery runs low. Built for people running 1–10 machines, not enterprise fleets.
+## Install
 
----
-
-## The problem
-
-Getting NUT to coordinate graceful shutdown across more than one machine is a multi-day project: install `nut-server` on the host with the UPS, configure `/etc/nut/*.conf` by hand, install `nut-client` on every other machine, generate SSH keys, write a shutdown script, install a systemd unit, configure the threshold logic, hook up notifications. Most people give up halfway and just hope the UPS lasts long enough.
-
-This repo collapses that to a few commands. Setup scripts handle the bash plumbing today; a modern Go CLI + TUI is in active development to run the whole thing from one machine via SSH.
-
-## What homelab-nut does
-
-- **Sets up NUT** — server, clients, and Prometheus exporter — across your fleet, with `apt`/`systemd` configured the way it should be
-- **Coordinates graceful shutdown** — a custom systemd daemon polls battery state and SSHes into your other machines to power them down when battery drops below a threshold
-- **Handles device quirks** — per-host shutdown recipes for UniFi gear (Dream Machine, UNAS), NAS appliances, smart TVs — anything that doesn't accept a normal SSH script
-- **Sends notifications** — Slack, Discord, Pushover, Telegram, ntfy on power events
-- **Ships a monitoring stack** — Docker compose with [nut-webgui](https://github.com/SuperioOne/nut_webgui) for status, `druggeri/nut_exporter` for Prometheus, and an importable Grafana dashboard
-
-## Install ([v0.2.0-alpha](https://github.com/rtorcato/homelab-nut/releases/tag/v0.2.0-alpha))
-
-Download the archive for your platform from the [latest release](https://github.com/rtorcato/homelab-nut/releases/latest) — or build from source with `make build`. Linux + macOS, x86_64 + arm64.
+Linux + macOS, x86_64 + arm64. Grab the [latest release](https://github.com/rtorcato/homelab-nut/releases/latest):
 
 ```bash
 OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH=arm64
@@ -34,41 +16,44 @@ sudo install homelab-nut /usr/local/bin/
 homelab-nut version
 ```
 
-Homebrew tap + `install.sh` are coming in Phase 4.
+Build from source: `make build`. Homebrew tap + one-line `install.sh` land in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5).
 
-## Using homelab-nut
-
-Two equally first-class ways in — pick the one that fits your context:
-
-### Humans → interactive TUI
+## Run it
 
 ```bash
 homelab-nut
 ```
 
-That's the whole command. The TUI walks you through everything:
+That opens the TUI. From an empty directory it walks you through setup — press `i` to generate `homelab-nut.yaml` with guided forms, `e` to edit it in `$EDITOR`, `a` to apply changes over SSH, `?` for the full keymap, `o` to open this project page.
 
-- **Empty inventory?** Press `i` to set one up with guided forms (no `init` subcommand to remember).
-- **Existing inventory?** You land on the Dashboard. Cycle screens with `tab`, jump with `1`/`2`/`3`/`4`, drill into hosts with `enter`.
-- **Make changes:** press `e` anywhere to open your inventory in `$EDITOR`; the TUI re-validates and refreshes on save.
-- **Run a setup:** press `a` to fire `apply` — watch per-host results stream into the Apply screen.
-- **Help:** press `?` for the full keybinding reference.
+With an inventory already in place:
 
-### AI agents, scripts, CI → composable subcommands
+```text
+$ homelab-nut -i examples/homelab-nut.yaml inventory list
+NAME           ADDRESS     USER   ROLES
+pi-rack        192.0.2.10  pi     nut-server,exporter,shutdown-daemon
+workstation    192.0.2.20  admin  nut-client,shutdown-target
+dream-machine  192.0.2.1   admin  shutdown-target
+```
 
-Every TUI action is also a subcommand with stable JSON output and exit codes — designed for LLM tools, automation, and pipelines:
+For AI agents, CI, and scripts — every subcommand emits stable JSON with documented exit codes:
 
 ```bash
-homelab-nut init                              # interactive bootstrap (huh forms)
+homelab-nut init                              # interactive bootstrap (charmbracelet/huh)
 homelab-nut inventory list -o json | jq .     # array of host objects
-homelab-nut inventory show pi-rack -o json    # single host object
 homelab-nut inventory validate -o json        # { "valid": bool, "errors": [...] }
 homelab-nut plan -o json                      # dry-run, full diff tree
-homelab-nut apply --auto-approve -o json      # execute, final summary as JSON
+homelab-nut apply --auto-approve -o json      # execute, summary as JSON
 homelab-nut version -o json                   # { "version", "commit", "date" }
 ```
 
-**Exit codes** (documented in [AGENTS.md](AGENTS.md) for AI-agent contracts):
+Full agent contract in **[AGENTS.md](AGENTS.md)** — common flows, JSON schemas per subcommand, exit-code semantics, what NOT to invoke.
+
+## Demo
+
+> **Asciinema cast + TUI screenshots:** coming in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5) alongside Homebrew packaging. Until then, the [docs site](https://rtorcato.github.io/homelab-nut/) carries an auto-generated CLI reference rendered from cobra.
+
+## Exit codes
 
 | Code | Meaning |
 |---|---|
@@ -77,24 +62,23 @@ homelab-nut version -o json                   # { "version", "commit", "date" }
 | `2` | Network / SSH error (transient — retry-safe) |
 | `3` | Apply partial failure (some hosts OK, some failed) |
 
-For an LLM-friendly tool contract — common flows, JSON schemas per subcommand, what NOT to invoke — see **[AGENTS.md](AGENTS.md)**.
-
 See **[ROADMAP.md](ROADMAP.md)** for what's coming and **[TODOS.md](TODOS.md)** for live status.
 
-## Power-user path — direct bash scripts
+---
 
-For users who'd rather skip the Go CLI and run the underlying scripts on the host with the UPS attached:
+## What homelab-nut does
 
-```bash
-git clone https://github.com/rtorcato/homelab-nut.git
-cd homelab-nut
+- **Sets up NUT** — server, clients, and Prometheus exporter — across your fleet, with `apt`/`systemd` configured the way it should be
+- **Coordinates graceful shutdown** — a custom systemd daemon polls battery state and SSHes into your other machines to power them down when battery drops below a threshold
+- **Handles device quirks** — per-host shutdown recipes for UniFi gear (Dream Machine, UNAS), NAS appliances, smart TVs — anything that doesn't accept a normal SSH script
+- **Sends notifications** — Slack, Discord, Pushover, Telegram, ntfy on power events
+- **Ships a monitoring stack** — Docker compose with [nut-webgui](https://github.com/SuperioOne/nut_webgui) for status, `druggeri/nut_exporter` for Prometheus, and an importable Grafana dashboard
 
-sudo ./scripts/setup-server.sh myups usbhid-ups   # on the Pi with the UPS
-sudo ./scripts/ups-service.sh                     # configure remote shutdown
-./ups-status.sh                                   # check UPS state
-```
+## The problem it solves
 
-The CLI's `apply` subcommand wraps these same scripts over SSH — the bash flow remains supported. See [Other setup options](#other-setup-options) for Docker stack, standalone exporter, manual NUT, etc.
+Getting NUT to coordinate graceful shutdown across more than one machine is a multi-day project: install `nut-server` on the host with the UPS, configure `/etc/nut/*.conf` by hand, install `nut-client` on every other machine, generate SSH keys, write a shutdown script, install a systemd unit, configure the threshold logic, hook up notifications. Most people give up halfway and just hope the UPS lasts long enough.
+
+`homelab-nut` collapses that to `init` + `apply`. The CLI is the primary path; the underlying bash scripts in [`/scripts/`](scripts/) are still supported for direct use.
 
 ## Status / Scope
 
@@ -129,6 +113,21 @@ If you're running 1–10 machines and want them to power down cleanly when the U
 | **[Docs site](https://rtorcato.github.io/homelab-nut/)** | Full reference + auto-generated CLI docs |
 
 ---
+
+## Direct bash scripts — what `apply` runs underneath
+
+`apply` SSHes into each host and runs the same bash scripts from [`/scripts/`](scripts/). If you'd rather skip the Go binary and run them by hand on the UPS host:
+
+```bash
+git clone https://github.com/rtorcato/homelab-nut.git
+cd homelab-nut
+
+sudo ./scripts/setup-server.sh myups usbhid-ups   # on the Pi with the UPS
+sudo ./scripts/ups-service.sh                     # configure remote shutdown
+./ups-status.sh                                   # check UPS state
+```
+
+The CLI exists to orchestrate these across a fleet; the scripts themselves remain fully supported. See [Other setup options](#other-setup-options) for the Docker stack, standalone exporter, and manual NUT walkthrough.
 
 ## Other setup options
 
@@ -227,12 +226,12 @@ Debian / Ubuntu (primary), Raspberry Pi OS, Proxmox VE, TrueNAS, anywhere `apt`/
 
 ```
 homelab-nut/
-├── cmd/homelab-nut/         # Go CLI entry point (in development)
-├── internal/                # CLI/TUI/inventory packages
-├── scripts/                 # Bash setup + shutdown scripts (today's path)
+├── cmd/homelab-nut/         # Go CLI entry point
+├── internal/                # CLI/TUI/inventory/roles/ssh/orchestrator packages
+├── scripts/                 # Bash setup + shutdown scripts (wrapped by `apply`)
 ├── docker/                  # Docker stack: nut-exporter + nut-webgui
-├── docs/                    # User-facing docs
-├── examples/                # Inventory examples + Grafana dashboard
+├── docs/                    # User-facing docs (also published as the docs site)
+├── examples/                # Inventory example + Grafana dashboard
 ├── config/                  # Daemon config (host-specific, gitignored)
 ├── ROADMAP.md
 ├── TODOS.md
