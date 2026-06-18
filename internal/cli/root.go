@@ -2,6 +2,8 @@
 package cli
 
 import (
+	"context"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rtorcato/homelab-nut/internal/tui"
 	"github.com/spf13/cobra"
@@ -54,6 +56,15 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 	cmd.AddCommand(newVersionCmd(info))
 	cmd.AddCommand(newInventoryCmd())
 	cmd.AddCommand(newInitCmd())
+	cmd.AddCommand(newPlanCmd())
+	cmd.AddCommand(newApplyCmd())
 
 	return cmd
+}
+
+// commandContext returns the context Cobra commands use for orchestrator
+// calls. Today it's just context.Background; future work will plumb the
+// cobra Context (which respects ctrl+C / SIGTERM) through here.
+func commandContext() context.Context {
+	return context.Background()
 }
