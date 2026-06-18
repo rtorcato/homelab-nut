@@ -75,6 +75,7 @@ docs-build:
 embed-sync:
 	cp scripts/setup-server.sh internal/roles/embedded/setup-server.sh
 	cp scripts/setup-client.sh internal/roles/embedded/setup-client.sh
+	cp scripts/setup-exporter.sh internal/roles/embedded/setup-exporter.sh
 
 ## clean: remove build artifacts
 clean:
