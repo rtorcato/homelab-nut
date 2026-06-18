@@ -19,7 +19,13 @@ permissions:
 
 concurrency:
   group: todos-sync
-  cancel-in-progress: false
+  # Cancel any in-flight run when a new event lands. TODOS.md regen is
+  # idempotent (we re-read live issue state from `gh` each run), so the
+  # latest event has the most recent state and earlier runs are obsolete.
+  # Without this, a burst of issue events (e.g. filing a Phase batch) races
+  # multiple runs on the chore/todos-sync branch and trips
+  # --force-with-lease's stale-info check.
+  cancel-in-progress: true
 
 jobs:
   sync:
