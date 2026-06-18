@@ -177,6 +177,59 @@ func TestApplyCompleteMsgUpdatesStatus(t *testing.T) {
 	}
 }
 
+func TestIKeyOnEmptyInventorySetsInitExitAction(t *testing.T) {
+	m := rootModel{version: "test", current: screenDashboard, inv: nil, inventoryPath: "homelab-nut.yaml"}
+	newModel, cmd := tea.Model(m).Update(key("i"))
+	rm := newModel.(rootModel)
+	if rm.exitAction != "init" {
+		t.Errorf("'i' on empty Dashboard: exitAction = %q, want %q", rm.exitAction, "init")
+	}
+	if cmd == nil {
+		t.Error("'i' should return tea.Quit")
+	}
+	if got := ExitAction(rm); got != "init" {
+		t.Errorf("ExitAction() = %q, want init", got)
+	}
+}
+
+func TestIKeyIgnoredWithPopulatedInventory(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	newModel, _ := tea.Model(m).Update(key("i"))
+	if got := newModel.(rootModel).exitAction; got != "" {
+		t.Errorf("'i' over populated inventory should be ignored, exitAction = %q", got)
+	}
+}
+
+func TestEKeySetsEditExitAction(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.inventoryPath = "homelab-nut.yaml"
+	newModel, cmd := tea.Model(m).Update(key("e"))
+	rm := newModel.(rootModel)
+	if rm.exitAction != "edit" {
+		t.Errorf("'e' Hosts screen: exitAction = %q, want edit", rm.exitAction)
+	}
+	if cmd == nil {
+		t.Error("'e' should return tea.Quit")
+	}
+}
+
+func TestEKeyIgnoredWhenNoInventoryPath(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.inventoryPath = "" // unusual but possible
+	newModel, _ := tea.Model(m).Update(key("e"))
+	if got := newModel.(rootModel).exitAction; got != "" {
+		t.Errorf("'e' with no inventoryPath should be ignored, exitAction = %q", got)
+	}
+}
+
+func TestExitActionHelper_NilSafe(t *testing.T) {
+	// ExitAction on a non-rootModel returns "" without panic.
+	var notMe tea.Model
+	if got := ExitAction(notMe); got != "" {
+		t.Errorf("ExitAction(nil) = %q, want \"\"", got)
+	}
+}
+
 func TestQuitKeysReturnTeaQuit(t *testing.T) {
 	for _, k := range []string{"q", "ctrl+c"} {
 		m := tea.Model(modelWithInventory(fixtureInventory()))
