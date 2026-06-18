@@ -4,6 +4,8 @@ This is the bootstrapping contract for any AI tool (Claude, Cursor, Aider, etc.)
 
 For humans, the TUI is the front door: run `homelab-nut` and follow the keybindings. This file documents the *subcommand* path, which is the front door for non-humans.
 
+> **Editing the codebase, not just using the tool?** See **[CLAUDE.md](CLAUDE.md)** — repo-development context (build, test, PR workflow, code layout, embed-sync rule, conventions). Different audience, deliberately separate.
+
 ## One-line orientation
 
 `homelab-nut` is a Go CLI + TUI that sets up [Network UPS Tools (NUT)](https://networkupstools.org/) across a homelab fleet via SSH. It reads a YAML inventory (`homelab-nut.yaml`), plans changes per host, and applies them by piping tested bash scripts through SSH connections.
