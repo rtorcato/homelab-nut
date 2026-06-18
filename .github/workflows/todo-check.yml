@@ -20,19 +20,24 @@ jobs:
           set -e
           # We enforce the policy in source code, not in docs (markdown is
           # where the policy itself is documented).
-          # Excludes this workflow file because it contains the regex literals
-          # for the very strings we're searching for.
-          bad=$(git grep -nE '\b(TODO|FIXME)\b' -- \
+          #
+          # A "real" TODO/FIXME is preceded by a comment marker (`//`, `#`,
+          # `/*`). Requiring that prefix avoids false-positives on stdlib
+          # identifiers like `context.TODO()` and `runtime.FIXME` etc.
+          #
+          # Excludes this workflow file because it contains the regex
+          # literals for the very strings we're searching for.
+          bad=$(git grep -nE '(//|#|/\*)[[:space:]]*(TODO|FIXME)\b' -- \
             '*.sh' '*.go' '*.py' '*.js' '*.ts' '*.yaml' '*.yml' '*.toml' \
             ':!.github/workflows/todo-check.yml' \
-            | grep -vE '\b(TODO|FIXME)\(#[0-9]+\)' || true)
+            | grep -vE '(TODO|FIXME)\(#[0-9]+\)' || true)
           if [ -n "$bad" ]; then
             echo "::error::Found TODO/FIXME without an issue reference"
             echo "$bad" | sed 's/^/  /'
             echo
-            echo 'Policy: every TODO and FIXME must reference a GitHub issue.'
+            echo 'Policy: every TODO and FIXME comment must reference a GitHub issue.'
             echo 'Format: TODO(#42): short description'
             echo 'See CONTRIBUTING.md for the full policy.'
             exit 1
           fi
-          echo 'All TODOs reference issues.'
+          echo 'All TODO comments reference issues.'
