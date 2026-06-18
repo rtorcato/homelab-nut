@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -107,7 +108,7 @@ func TestPrefixWriter_HandlesPartialLines(t *testing.T) {
 }
 
 func TestRun_NilInventoryReturnsEmptyResult(t *testing.T) {
-	got := Plan(nil, nil, Options{})
+	got := Plan(context.TODO(), nil, Options{})
 	if got == nil {
 		t.Fatal("Plan(nil) returned nil")
 	}

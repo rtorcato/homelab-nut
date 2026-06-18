@@ -112,7 +112,7 @@ func run(ctx context.Context, inv *inventory.Inventory, opts Options, m mode, ou
 	ctx = roles.WithInventory(ctx, inv)
 
 	executor := ssh.NewExecutor(opts.SSHConfig)
-	defer executor.Close()
+	defer func() { _ = executor.Close() }()
 
 	result := &Result{Hosts: make([]*HostResult, len(inv.Hosts))}
 
