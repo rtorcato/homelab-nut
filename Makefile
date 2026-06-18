@@ -74,6 +74,7 @@ docs-build:
 ## CI runs this and fails on a non-empty diff.
 embed-sync:
 	cp scripts/setup-server.sh internal/roles/embedded/setup-server.sh
+	cp scripts/setup-client.sh internal/roles/embedded/setup-client.sh
 
 ## clean: remove build artifacts
 clean:
