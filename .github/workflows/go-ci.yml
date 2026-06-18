@@ -45,13 +45,15 @@ jobs:
           go-version: '1.25'
           cache: true
 
-      - uses: golangci/golangci-lint-action@v8
-        with:
-          # Pin a recent golangci-lint built against Go 1.25+. Older
-          # `version: latest` resolutions picked a 1.24-built binary that
-          # can't load modules with `go 1.25` in go.mod.
-          version: v2.1.6
-          args: --timeout=5m
+      - name: Install golangci-lint from source
+        # The prebuilt golangci-lint binaries are compiled with an older
+        # Go than our 1.25 module floor, so they refuse to load go.mod.
+        # Installing via `go install` uses the runner's Go and avoids
+        # that mismatch.
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+
+      - name: Run golangci-lint
+        run: golangci-lint run --timeout=5m ./...
 
   snapshot:
     name: goreleaser snapshot
