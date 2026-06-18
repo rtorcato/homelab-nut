@@ -72,10 +72,4 @@ var (
 			Foreground(palette.muted).
 			Italic(true).
 			Padding(1, 2)
-
-	// mascotStyle wraps the embedded chafa half-block render. Foreground
-	// is intentionally unset — the ANSI carries its own per-cell colors
-	// and a lipgloss foreground would override them.
-	mascotStyle = lipgloss.NewStyle().
-			Padding(1, 2)
 )
