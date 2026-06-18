@@ -16,6 +16,40 @@ Thanks for considering a contribution. This project is aimed at homelab and smal
 - Enterprise / HA features that need a real cluster manager
 - Per-distro packaging beyond Debian/Ubuntu (PRs welcome but not a priority)
 
+## Working on this repo
+
+The workflow is **branch per issue → PR → auto-merge on green CI**. `main` is protected; the only way changes land is through a PR with all required status checks passing.
+
+```bash
+# 1. Branch from latest main. Naming: <type>/<issue>-<short-name>
+#    Types: feat, fix, docs, chore, ci, refactor, test
+git fetch origin main
+git switch -c feat/20-nut-client-role origin/main
+
+# 2. Do the work. Commit messages follow Conventional Commits
+#    (matches the eventual squash-merge title format).
+git commit -m "feat(roles): add nut-client role"
+git commit -m "test(roles): cover nut-client detect cases"
+
+# 3. Push and open the PR. --fill picks up the PR template.
+git push -u origin feat/20-nut-client-role
+gh pr create --fill --title "feat(roles): add nut-client role (#20)"
+
+# 4. Queue auto-merge — GitHub merges as soon as required checks pass.
+gh pr merge --auto --squash --delete-branch
+
+# 5. Sync local main once the PR has merged.
+git switch main && git pull --ff-only
+```
+
+When iterating on review feedback, just push again — auto-merge stays queued and re-runs the checks. To take a PR out of auto-merge, run `gh pr merge --disable-auto <number>`.
+
+**Branch protection** on `main` enforces:
+- All commits arrive via PR (no direct pushes)
+- All these status checks must be green: `build + test`, `golangci-lint`, `goreleaser snapshot`, `CI`, `TODO check`
+- Linear history (squash-merge only — no merge commits)
+- Branches are deleted on merge
+
 ## Before you open a PR
 
 1. **Test the scripts locally.** Most of this is bash — there's no CI substitute for actually running `setup-server.sh` on a fresh VM or `ups-service.sh` against a real UPS.
