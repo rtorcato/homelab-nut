@@ -6,9 +6,11 @@
 package tui
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -22,6 +24,7 @@ const (
 	screenDashboard screen = iota
 	screenHosts
 	screenHost
+	screenApply
 	screenHelp
 )
 
@@ -33,6 +36,8 @@ func (s screen) String() string {
 		return "Hosts"
 	case screenHost:
 		return "Host"
+	case screenApply:
+		return "Apply"
 	case screenHelp:
 		return "Help"
 	}
@@ -41,7 +46,7 @@ func (s screen) String() string {
 
 // tabOrder is the navigation order for tab / shift+tab and number keys.
 // screenHost isn't in the tab bar — you reach it by pressing enter on Hosts.
-var tabOrder = []screen{screenDashboard, screenHosts, screenHelp}
+var tabOrder = []screen{screenDashboard, screenHosts, screenApply, screenHelp}
 
 // New returns the root Bubble Tea model.
 //
@@ -69,6 +74,7 @@ type rootModel struct {
 	loadErr       error
 	current       screen
 	selectedHost  int
+	apply         applyState
 	width, height int
 }
 
@@ -81,6 +87,19 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
+	case applyCompleteMsg:
+		m.apply.elapsed = time.Since(m.apply.startedAt)
+		m.apply.result = msg.result
+		if msg.err != nil {
+			m.apply.status = applyFailed
+			m.apply.err = msg.err
+		} else {
+			m.apply.status = applyDone
+		}
+		if m.apply.logBuf != nil {
+			m.apply.logBuf.WriteString(msg.logs)
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -107,8 +126,22 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "2":
 		m.current = screenHosts
 		return m, nil
-	case "3", "?":
+	case "3":
+		m.current = screenApply
+		return m, nil
+	case "4", "?":
 		m.current = screenHelp
+		return m, nil
+	case "a", "A":
+		if m.apply.status != applyRunning && m.inv != nil && len(m.inv.Hosts) > 0 {
+			m.current = screenApply
+			m.apply = applyState{
+				status:    applyRunning,
+				startedAt: time.Now(),
+				logBuf:    new(bytes.Buffer),
+			}
+			return m, startApply(m.inv)
+		}
 		return m, nil
 	}
 
@@ -158,6 +191,8 @@ func (m rootModel) View() string {
 		b.WriteString(m.viewHosts())
 	case screenHost:
 		b.WriteString(m.viewHost())
+	case screenApply:
+		b.WriteString(m.viewApply())
 	case screenHelp:
 		b.WriteString(m.viewHelp())
 	}
@@ -276,10 +311,11 @@ func (m rootModel) viewHelp() string {
 	b.WriteString("\n\n")
 	rows := [][2]string{
 		{"tab / shift+tab", "cycle screens"},
-		{"1 / 2 / 3", "jump to Dashboard / Hosts / Help"},
+		{"1 / 2 / 3 / 4", "jump to Dashboard / Hosts / Apply / Help"},
 		{"?", "open this help"},
 		{"↑ ↓ / k j", "select host (Hosts screen)"},
 		{"enter", "drill into selected host"},
+		{"a / A", "run apply (from any screen)"},
 		{"esc", "go back one screen"},
 		{"q / ctrl+c", "quit"},
 	}

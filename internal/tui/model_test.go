@@ -73,7 +73,7 @@ func TestTabCyclesScreens(t *testing.T) {
 	m := tea.Model(modelWithInventory(fixtureInventory()))
 
 	var cmd tea.Cmd
-	expected := []screen{screenHosts, screenHelp, screenDashboard, screenHosts}
+	expected := []screen{screenHosts, screenApply, screenHelp, screenDashboard, screenHosts}
 	for i, want := range expected {
 		m, cmd = send(t, m, key("tab"))
 		_ = cmd
@@ -98,7 +98,8 @@ func TestNumberKeysJumpToScreens(t *testing.T) {
 	}{
 		{"1", screenDashboard},
 		{"2", screenHosts},
-		{"3", screenHelp},
+		{"3", screenApply},
+		{"4", screenHelp},
 		{"?", screenHelp},
 	}
 	for _, tc := range cases {
@@ -141,6 +142,38 @@ func TestHostsScreenSelectionAndDrillIn(t *testing.T) {
 	m, _ = send(t, m, key("esc"))
 	if got := m.(rootModel).current; got != screenHosts {
 		t.Errorf("after esc: current = %v, want Hosts", got)
+	}
+}
+
+func TestApplyKeyJumpsToApplyScreen(t *testing.T) {
+	m := tea.Model(modelWithInventory(fixtureInventory()))
+	m, _ = send(t, m, key("a"))
+	got := m.(rootModel)
+	if got.current != screenApply {
+		t.Errorf("after 'a': current = %v, want Apply", got.current)
+	}
+	if got.apply.status != applyRunning {
+		t.Errorf("after 'a': apply.status = %v, want running", got.apply.status)
+	}
+}
+
+func TestApplyKeyIgnoredWithEmptyInventory(t *testing.T) {
+	m := rootModel{version: "test", current: screenDashboard, inv: nil}
+	newM, _ := tea.Model(m).Update(key("a"))
+	out := newM.(rootModel)
+	if out.apply.status != applyIdle {
+		t.Errorf("apply key with nil inventory should not start apply, got status %v", out.apply.status)
+	}
+}
+
+func TestApplyCompleteMsgUpdatesStatus(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.apply = applyState{status: applyRunning}
+	msg := applyCompleteMsg{result: nil, err: nil, logs: ""}
+	newM, _ := tea.Model(m).Update(msg)
+	got := newM.(rootModel).apply.status
+	if got != applyDone {
+		t.Errorf("complete msg (no error) → status %v, want applyDone", got)
 	}
 }
 
