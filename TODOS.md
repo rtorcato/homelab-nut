@@ -4,7 +4,7 @@ Roadmap work tracked as GitHub Issues, grouped by phase. **Generated** — run `
 
 > Bugs and one-off issues are tracked on GitHub directly and not listed here. This file is the index of *planned* work (issues with a `phase-*` label).
 
-_Last updated: 2026-06-17_
+_Last updated: 2026-06-18_
 
 ## Phase 0 — Foundation ([epic #1](https://github.com/rtorcato/homelab-nut/issues/1))
 
@@ -26,7 +26,9 @@ Progress: 4 / 5 closed
 
 ## Phase 2 — SSH + first apply ([epic #3](https://github.com/rtorcato/homelab-nut/issues/3)) · v0.1 Alpha
 
-_No children filed yet._
+Progress: 0 / 1 closed
+
+- [ ] [#17 — SSH executor — key-based auth, known_hosts, streaming output](https://github.com/rtorcato/homelab-nut/issues/17)
 
 ## Phase 3 — All roles + status ([epic #4](https://github.com/rtorcato/homelab-nut/issues/4)) · v0.2 Beta
 
