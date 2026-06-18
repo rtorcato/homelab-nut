@@ -22,54 +22,79 @@ This repo collapses that to a few commands. Setup scripts handle the bash plumbi
 - **Sends notifications** — Slack, Discord, Pushover, Telegram, ntfy on power events
 - **Ships a monitoring stack** — Docker compose with [nut-webgui](https://github.com/SuperioOne/nut_webgui) for status, `druggeri/nut_exporter` for Prometheus, and an importable Grafana dashboard
 
-## The CLI ([v0.1.0-alpha](https://github.com/rtorcato/homelab-nut/releases/tag/v0.1.0-alpha) — what works today)
+## Install ([v0.2.0-alpha](https://github.com/rtorcato/homelab-nut/releases/tag/v0.2.0-alpha))
 
-Download the binary for your platform from the [latest release](https://github.com/rtorcato/homelab-nut/releases/latest) — or build from source with `make build`.
+Download the archive for your platform from the [latest release](https://github.com/rtorcato/homelab-nut/releases/latest) — or build from source with `make build`. Linux + macOS, x86_64 + arm64.
 
 ```bash
-# Generate an inventory file interactively (charmbracelet/huh forms)
-homelab-nut init
+OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH=arm64
+curl -L "https://github.com/rtorcato/homelab-nut/releases/latest/download/homelab-nut_*_${OS}_${ARCH}.tar.gz" \
+  | tar -xz homelab-nut
+sudo install homelab-nut /usr/local/bin/
+homelab-nut version
+```
 
-# Inspect the inventory
-homelab-nut inventory list
-homelab-nut inventory show pi-rack
-homelab-nut inventory validate
+Homebrew tap + `install.sh` are coming in Phase 4.
 
-# Open the full 4-screen Bubble Tea TUI (Dashboard / Hosts / Host / Help)
+## Using homelab-nut
+
+Two equally first-class ways in — pick the one that fits your context:
+
+### Humans → interactive TUI
+
+```bash
 homelab-nut
 ```
 
-### Coming next (mid-Phase-2)
+That's the whole command. The TUI walks you through everything:
+
+- **Empty inventory?** Press `i` to set one up with guided forms (no `init` subcommand to remember).
+- **Existing inventory?** You land on the Dashboard. Cycle screens with `tab`, jump with `1`/`2`/`3`/`4`, drill into hosts with `enter`.
+- **Make changes:** press `e` anywhere to open your inventory in `$EDITOR`; the TUI re-validates and refreshes on save.
+- **Run a setup:** press `a` to fire `apply` — watch per-host results stream into the Apply screen.
+- **Help:** press `?` for the full keybinding reference.
+
+### AI agents, scripts, CI → composable subcommands
+
+Every TUI action is also a subcommand with stable JSON output and exit codes — designed for LLM tools, automation, and pipelines:
 
 ```bash
-homelab-nut plan        # preview what would change on each host (Terraform-style)
-homelab-nut apply       # SSH out, install + configure NUT across the fleet
-homelab-nut status      # live UPS dashboard across the fleet
+homelab-nut init                              # interactive bootstrap (huh forms)
+homelab-nut inventory list -o json | jq .     # array of host objects
+homelab-nut inventory show pi-rack -o json    # single host object
+homelab-nut inventory validate -o json        # { "valid": bool, "errors": [...] }
+homelab-nut plan -o json                      # dry-run, full diff tree
+homelab-nut apply --auto-approve -o json      # execute, final summary as JSON
+homelab-nut version -o json                   # { "version", "commit", "date" }
 ```
 
-Three of five setup roles already work over SSH today (`nut-server`, `nut-client`, `exporter`) — they wrap the existing `scripts/*.sh` and stream their output back live. The remaining two roles (`shutdown-daemon`, `shutdown-target`) plus the `plan`/`apply` subcommands land before the v0.1 Alpha tag becomes feature-complete. The bash scripts keep working in parallel; the CLI's wrap-then-port path means there's no migration cliff.
+**Exit codes** (documented in [AGENTS.md](AGENTS.md) for AI-agent contracts):
 
-See [**ROADMAP.md**](ROADMAP.md) for the full plan and [**TODOS.md**](TODOS.md) for live status of open work.
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Validation / config error (user-fixable) |
+| `2` | Network / SSH error (transient — retry-safe) |
+| `3` | Apply partial failure (some hosts OK, some failed) |
 
-## Quick Start
+For an LLM-friendly tool contract — common flows, JSON schemas per subcommand, what NOT to invoke — see **[AGENTS.md](AGENTS.md)**.
 
-The simplest path that exists today — bash scripts run directly on the host with the UPS:
+See **[ROADMAP.md](ROADMAP.md)** for what's coming and **[TODOS.md](TODOS.md)** for live status.
+
+## Power-user path — direct bash scripts
+
+For users who'd rather skip the Go CLI and run the underlying scripts on the host with the UPS attached:
 
 ```bash
 git clone https://github.com/rtorcato/homelab-nut.git
 cd homelab-nut
 
-# On the host with the UPS attached (Debian/Ubuntu):
-sudo ./scripts/setup-server.sh myups usbhid-ups
-
-# Set up coordinated remote shutdown (interactive wizard):
-sudo ./scripts/ups-service.sh
-
-# Check status from anywhere:
-./ups-status.sh
+sudo ./scripts/setup-server.sh myups usbhid-ups   # on the Pi with the UPS
+sudo ./scripts/ups-service.sh                     # configure remote shutdown
+./ups-status.sh                                   # check UPS state
 ```
 
-Need a different path? See [Other setup options](#other-setup-options) below — Docker stack, Prometheus exporter, manual NUT, remote-only clients, etc.
+The CLI's `apply` subcommand wraps these same scripts over SSH — the bash flow remains supported. See [Other setup options](#other-setup-options) for Docker stack, standalone exporter, manual NUT, etc.
 
 ## Status / Scope
 
