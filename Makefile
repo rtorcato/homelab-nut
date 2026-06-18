@@ -20,7 +20,7 @@ LDFLAGS := -s -w \
 GO          ?= go
 GO_FLAGS    := -trimpath -ldflags '$(LDFLAGS)'
 
-.PHONY: all build run test lint tidy clean install snapshot todos docs-cli docs-dev docs-build help
+.PHONY: all build run test lint tidy clean install snapshot todos docs-cli docs-dev docs-build embed-sync help
 
 all: build
 
@@ -68,6 +68,12 @@ docs-dev:
 ## docs-build: produce a static build of the docs site
 docs-build:
 	cd apps/docs && pnpm build
+
+## embed-sync: copy /scripts/*.sh into internal/roles/embedded/ so the
+## binary's embedded scripts match the canonical ones users run today.
+## CI runs this and fails on a non-empty diff.
+embed-sync:
+	cp scripts/setup-server.sh internal/roles/embedded/setup-server.sh
 
 ## clean: remove build artifacts
 clean:

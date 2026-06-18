@@ -28,6 +28,14 @@ jobs:
             exit 1
           fi
 
+      - name: embed-sync drift check
+        run: |
+          make embed-sync
+          if ! git diff --exit-code -- internal/roles/embedded/; then
+            echo "::error::internal/roles/embedded/ is out of sync with /scripts — run 'make embed-sync' locally"
+            exit 1
+          fi
+
       - name: build
         run: go build -trimpath ./...
 

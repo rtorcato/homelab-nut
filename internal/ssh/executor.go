@@ -258,6 +258,39 @@ func (c *Connection) Run(ctx context.Context, cmd string) (*Result, error) {
 	return &Result{Stdout: out, Stderr: errOut, ExitCode: exit}, nil
 }
 
+// Pipe runs cmd with stdin from r, streaming stdout/stderr to the
+// supplied writers. Convenience for the "embed a script, pipe it
+// through ssh" pattern used by roles:
+//
+//	conn.Pipe(ctx, bytes.NewReader(scriptBytes),
+//	    "sudo bash -s -- " + args, out, out)
+//
+// Like Stream, non-zero exits surface as *ssh.ExitError (use errors.As).
+func (c *Connection) Pipe(ctx context.Context, stdin io.Reader, cmd string, stdout, stderr io.Writer) error {
+	if c == nil || c.client == nil {
+		return errors.New("ssh: connection is closed")
+	}
+	sess, err := c.client.NewSession()
+	if err != nil {
+		return fmt.Errorf("ssh: new session: %w", err)
+	}
+	defer sess.Close()
+
+	if stdin != nil {
+		sess.Stdin = stdin
+	}
+	if stdout != nil {
+		sess.Stdout = stdout
+	}
+	if stderr != nil {
+		sess.Stderr = stderr
+	}
+
+	ctx, cancel := c.applyCommandTimeout(ctx)
+	defer cancel()
+	return runStreamingSession(ctx, sess, cmd)
+}
+
 // Stream is like Run but writes stdout/stderr straight to the supplied
 // writers as data arrives. Returns the same kind of "network failed"
 // error as Run; non-zero exits are returned via *exec.ExitError-like
