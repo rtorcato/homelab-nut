@@ -1,6 +1,7 @@
 package roles
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -40,7 +41,7 @@ func TestNutServer_PlanRejectsMissingUPS(t *testing.T) {
 		Roles: []inventory.Role{inventory.RoleNUTServer},
 		// no UPS block
 	}
-	_, err := r.Plan(nil, nil, h)
+	_, err := r.Plan(context.TODO(), nil, h)
 	if err == nil {
 		t.Fatal("Plan should reject host without ups.name/ups.driver")
 	}
@@ -56,7 +57,7 @@ func TestNutServer_PlanReturnsActions(t *testing.T) {
 		Roles: []inventory.Role{inventory.RoleNUTServer},
 		UPS:   &inventory.UPS{Name: "myups", Driver: "usbhid-ups"},
 	}
-	d, err := r.Plan(nil, nil, h)
+	d, err := r.Plan(context.TODO(), nil, h)
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
 	}
