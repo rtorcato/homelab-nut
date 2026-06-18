@@ -292,7 +292,16 @@ func (m rootModel) emptyDashboard() string {
 	default:
 		msg = "Inventory is empty."
 	}
-	return emptyStateStyle.Render(msg + "\n\nPress  i  to set up your inventory (or run `homelab-nut init` outside the TUI).")
+	text := emptyStateStyle.Render(msg + "\n\nPress  i  to set up your inventory (or run `homelab-nut init` outside the TUI).")
+
+	// Gate the mascot on terminal width — the rendered mascot block is
+	// ~34 cols (30 + padding) and the message box is ~95, so we need
+	// roughly 130 cols of headroom before showing both side-by-side.
+	// Narrower terminals fall back to message-only.
+	if m.width < 130 {
+		return text
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, mascotStyle.Render(mascotArt), text)
 }
 
 func (m rootModel) viewHosts() string {
