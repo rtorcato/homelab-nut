@@ -42,15 +42,24 @@ func (s State) String() string {
 	}
 }
 
+// MarshalJSON emits the state's String() label so machine-readable
+// output uses "ok" / "missing" instead of the underlying int.
+func (s State) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + s.String() + `"`), nil
+}
+
 // Diff is what Plan returns: a per-host preview of what Apply would do.
+//
+// JSON tags so `homelab-nut plan -o json` produces a stable shape for
+// AI agents and scripts to consume.
 type Diff struct {
-	Host    *inventory.Host
-	Role    string
-	Current State
-	Target  State
+	Host    *inventory.Host `json:"host"`
+	Role    string          `json:"role"`
+	Current State           `json:"current"`
+	Target  State           `json:"target"`
 	// Actions is a list of human-readable steps that Apply would take.
 	// Empty when Current == Target (nothing to do).
-	Actions []string
+	Actions []string `json:"actions"`
 }
 
 // NoOp reports whether the diff would do nothing.

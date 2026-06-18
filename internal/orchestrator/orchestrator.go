@@ -40,11 +40,41 @@ type Options struct {
 }
 
 // HostResult records what happened on one host.
+//
+// JSON tags so `-o json` output has a stable shape. Errors marshal as
+// strings (their .Error() text) via the ErrorStrings() helper since
+// the error interface itself isn't JSON-marshalable.
 type HostResult struct {
-	Host    *inventory.Host
-	Diffs   []*roles.Diff // populated by Plan + Apply (Plan-only after a plan call)
-	Errors  []error       // role-level errors; an apply that fails halfway still records the preceding successes
-	Skipped []string      // role names skipped (e.g. inapplicable roles)
+	Host    *inventory.Host `json:"host"`
+	Diffs   []*roles.Diff   `json:"diffs"`           // populated by Plan + Apply
+	Errors  []error         `json:"-"`               // marshalled via ErrorStrings
+	Skipped []string        `json:"skipped,omitempty"` // role names skipped (inapplicable)
+}
+
+// ErrorStrings returns the host's errors as plain strings for JSON
+// serialization. Empty when there are no errors.
+func (r *HostResult) ErrorStrings() []string {
+	if len(r.Errors) == 0 {
+		return nil
+	}
+	out := make([]string, len(r.Errors))
+	for i, e := range r.Errors {
+		out[i] = e.Error()
+	}
+	return out
+}
+
+// MarshalJSON adds the "errors" key built from ErrorStrings() so JSON
+// output includes failure detail without the un-marshalable error type.
+func (r *HostResult) MarshalJSON() ([]byte, error) {
+	type alias HostResult
+	return jsonMarshalWithErrors(struct {
+		*alias
+		Errors []string `json:"errors,omitempty"`
+	}{
+		alias:  (*alias)(r),
+		Errors: r.ErrorStrings(),
+	})
 }
 
 // HasErrors reports whether any role on the host errored.
@@ -52,7 +82,7 @@ func (r *HostResult) HasErrors() bool { return len(r.Errors) > 0 }
 
 // Result aggregates across hosts.
 type Result struct {
-	Hosts []*HostResult
+	Hosts []*HostResult `json:"hosts"`
 }
 
 // HasErrors reports whether any host had errors.

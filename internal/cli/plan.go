@@ -12,7 +12,7 @@ import (
 func newPlanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan",
-		Short: "Preview what `apply` would change on each host",
+		Short: "Preview what `apply` would change on each host (or JSON with -o json)",
 		Long: `Loads the inventory, opens SSH connections to each host, runs each
 role's Detect + Plan, and prints a per-role diff. Read-only — makes
 no changes on any host.
@@ -22,13 +22,14 @@ command and execute with another.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path, _ := cmd.Flags().GetString("inventory")
-			return runPlan(cmd.OutOrStdout(), cmd.ErrOrStderr(), path)
+			return runPlan(cmd.OutOrStdout(), cmd.ErrOrStderr(), path, getOutputFormat(cmd))
 		},
 	}
+	addOutputFlag(cmd)
 	return cmd
 }
 
-func runPlan(stdout, stderr io.Writer, path string) error {
+func runPlan(stdout, stderr io.Writer, path string, format outputFormat) error {
 	inv, err := loadInventoryOrReport(stderr, path)
 	if err != nil {
 		return err
@@ -36,6 +37,13 @@ func runPlan(stdout, stderr io.Writer, path string) error {
 	res := orchestrator.Plan(commandContext(), inv, orchestrator.Options{
 		SSHConfig: hssh.NewConfig(),
 	})
+	if format == outputJSON {
+		_ = emitJSON(stdout, res)
+		if res.HasErrors() {
+			return errSilent
+		}
+		return nil
+	}
 	printPlanResult(stdout, res)
 	if res.HasErrors() {
 		return errSilent

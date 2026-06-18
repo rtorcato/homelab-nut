@@ -34,9 +34,9 @@ or open the file in your $EDITOR (re-validating on save).`,
 }
 
 func newInventoryListCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Print a table of hosts",
+		Short: "Print a table of hosts (or JSON with -o json)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path, _ := cmd.Flags().GetString("inventory")
@@ -44,21 +44,28 @@ func newInventoryListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if getOutputFormat(cmd) == outputJSON {
+				return emitJSON(cmd.OutOrStdout(), inv.Hosts)
+			}
 			return printHostsTable(cmd.OutOrStdout(), inv)
 		},
 	}
+	addOutputFlag(cmd)
+	return cmd
 }
 
 func newInventoryValidateCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Check the inventory against the schema and rules",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path, _ := cmd.Flags().GetString("inventory")
 			_, err := inventory.Load(path)
+			if getOutputFormat(cmd) == outputJSON {
+				return emitValidateJSON(cmd.OutOrStdout(), path, err)
+			}
 			if err != nil {
-				// Validation errors print themselves clearly; we just relay.
 				fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", err)
 				return errSilent
 			}
@@ -66,12 +73,46 @@ func newInventoryValidateCmd() *cobra.Command {
 			return nil
 		},
 	}
+	addOutputFlag(cmd)
+	return cmd
+}
+
+// emitValidateJSON renders the validate result in JSON form.
+// Success: {"valid": true, "path": "..."}
+// Failure: {"valid": false, "path": "...", "errors": [{"field": "...", "message": "..."}]}
+func emitValidateJSON(w io.Writer, path string, err error) error {
+	type fieldErr struct {
+		Field   string `json:"field"`
+		Message string `json:"message"`
+	}
+	type result struct {
+		Valid  bool       `json:"valid"`
+		Path   string     `json:"path"`
+		Errors []fieldErr `json:"errors,omitempty"`
+	}
+	res := result{Valid: err == nil, Path: path}
+	if err != nil {
+		var vErr *inventory.ValidationError
+		if errors.As(err, &vErr) {
+			for _, iss := range vErr.Issues {
+				res.Errors = append(res.Errors, fieldErr{Field: iss.Path, Message: iss.Message})
+			}
+		} else {
+			res.Errors = []fieldErr{{Field: "", Message: err.Error()}}
+		}
+	}
+	out := emitJSON(w, res)
+	if err != nil {
+		// Surface non-zero exit even on the JSON path.
+		return errSilent
+	}
+	return out
 }
 
 func newInventoryShowCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "show <host>",
-		Short: "Show details for one host",
+		Short: "Show details for one host (or JSON with -o json)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path, _ := cmd.Flags().GetString("inventory")
@@ -83,9 +124,14 @@ func newInventoryShowCmd() *cobra.Command {
 			if h == nil {
 				return fmt.Errorf("host %q not found in %s", args[0], path)
 			}
+			if getOutputFormat(cmd) == outputJSON {
+				return emitJSON(cmd.OutOrStdout(), h)
+			}
 			return printHostDetail(cmd.OutOrStdout(), h)
 		},
 	}
+	addOutputFlag(cmd)
+	return cmd
 }
 
 func newInventoryEditCmd() *cobra.Command {

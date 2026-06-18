@@ -8,19 +8,23 @@
 package inventory
 
 // Inventory is the root document. Loaded from homelab-nut.yaml.
+//
+// JSON tags mirror the YAML field names so machine-readable output
+// (e.g. `homelab-nut inventory list -o json`) is stable for AI agents
+// and scripts to consume.
 type Inventory struct {
-	Hosts           []Host          `yaml:"hosts"`
-	ShutdownDaemon  *ShutdownDaemon `yaml:"shutdown_daemon,omitempty"`
+	Hosts          []Host          `yaml:"hosts"                     json:"hosts"`
+	ShutdownDaemon *ShutdownDaemon `yaml:"shutdown_daemon,omitempty" json:"shutdown_daemon,omitempty"`
 }
 
 // Host describes a single machine in the fleet.
 type Host struct {
-	Name     string    `yaml:"name"`
-	Address  string    `yaml:"address"`
-	User     string    `yaml:"user"`
-	Roles    []Role    `yaml:"roles"`
-	UPS      *UPS      `yaml:"ups,omitempty"`
-	Shutdown *Shutdown `yaml:"shutdown,omitempty"`
+	Name     string    `yaml:"name"               json:"name"`
+	Address  string    `yaml:"address"            json:"address"`
+	User     string    `yaml:"user"               json:"user"`
+	Roles    []Role    `yaml:"roles"              json:"roles"`
+	UPS      *UPS      `yaml:"ups,omitempty"      json:"ups,omitempty"`
+	Shutdown *Shutdown `yaml:"shutdown,omitempty" json:"shutdown,omitempty"`
 }
 
 // Role enumerates what a host does.
@@ -55,23 +59,23 @@ func (r Role) Valid() bool {
 
 // UPS describes a UPS attached to a nut-server host.
 type UPS struct {
-	Name   string `yaml:"name"`
-	Driver string `yaml:"driver"`
+	Name   string `yaml:"name"   json:"name"`
+	Driver string `yaml:"driver" json:"driver"`
 }
 
 // Shutdown is per-host shutdown configuration for shutdown-target hosts.
 // Command can be either a script path (`~/shutdown.sh` — wrapped in nohup
 // over SSH) or an inline command (`poweroff` — sent directly).
 type Shutdown struct {
-	Command string `yaml:"command"`
+	Command string `yaml:"command" json:"command"`
 }
 
 // ShutdownDaemon is the global configuration for the battery-shutdown daemon.
 // Lives on the host(s) with role shutdown-daemon.
 type ShutdownDaemon struct {
-	Threshold       int    `yaml:"threshold"`
-	PollInterval    int    `yaml:"poll_interval"`
-	SlackWebhookEnv string `yaml:"slack_webhook_env,omitempty"`
+	Threshold       int    `yaml:"threshold"                   json:"threshold"`
+	PollInterval    int    `yaml:"poll_interval"               json:"poll_interval"`
+	SlackWebhookEnv string `yaml:"slack_webhook_env,omitempty" json:"slack_webhook_env,omitempty"`
 }
 
 // HostByName returns the first host matching name, or nil.
