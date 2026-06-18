@@ -22,18 +22,34 @@ This repo collapses that to a few commands. Setup scripts handle the bash plumbi
 - **Sends notifications** — Slack, Discord, Pushover, Telegram, ntfy on power events
 - **Ships a monitoring stack** — Docker compose with [nut-webgui](https://github.com/SuperioOne/nut_webgui) for status, `druggeri/nut_exporter` for Prometheus, and an importable Grafana dashboard
 
-## What the CLI will look like
+## The CLI ([v0.1.0-alpha](https://github.com/rtorcato/homelab-nut/releases/tag/v0.1.0-alpha) — what works today)
 
-The current path is the bash scripts in [`scripts/`](scripts/). A Go CLI + Bubble Tea TUI is being built so you'll instead run:
+Download the binary for your platform from the [latest release](https://github.com/rtorcato/homelab-nut/releases/latest) — or build from source with `make build`.
 
 ```bash
-homelab-nut init        # interactive: describe your hosts and their roles
-homelab-nut apply       # SSH out, install + configure NUT across the fleet
-homelab-nut status      # live UPS dashboard
-homelab-nut             # full TUI for ongoing ops
+# Generate an inventory file interactively (charmbracelet/huh forms)
+homelab-nut init
+
+# Inspect the inventory
+homelab-nut inventory list
+homelab-nut inventory show pi-rack
+homelab-nut inventory validate
+
+# Open the full 4-screen Bubble Tea TUI (Dashboard / Hosts / Host / Help)
+homelab-nut
 ```
 
-Today's scripts keep working; the new CLI wraps them over SSH in v1, then progressively ports the logic to native Go. See [**ROADMAP.md**](ROADMAP.md) for the plan and [**TODOS.md**](TODOS.md) for live status of open work.
+### Coming next (mid-Phase-2)
+
+```bash
+homelab-nut plan        # preview what would change on each host (Terraform-style)
+homelab-nut apply       # SSH out, install + configure NUT across the fleet
+homelab-nut status      # live UPS dashboard across the fleet
+```
+
+Three of five setup roles already work over SSH today (`nut-server`, `nut-client`, `exporter`) — they wrap the existing `scripts/*.sh` and stream their output back live. The remaining two roles (`shutdown-daemon`, `shutdown-target`) plus the `plan`/`apply` subcommands land before the v0.1 Alpha tag becomes feature-complete. The bash scripts keep working in parallel; the CLI's wrap-then-port path means there's no migration cliff.
+
+See [**ROADMAP.md**](ROADMAP.md) for the full plan and [**TODOS.md**](TODOS.md) for live status of open work.
 
 ## Quick Start
 
