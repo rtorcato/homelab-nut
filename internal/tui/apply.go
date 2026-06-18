@@ -24,19 +24,6 @@ const (
 	applyFailed
 )
 
-func (s applyStatus) label() string {
-	switch s {
-	case applyRunning:
-		return "running"
-	case applyDone:
-		return "complete"
-	case applyFailed:
-		return "failed"
-	default:
-		return "ready"
-	}
-}
-
 // applyState lives on rootModel — the Apply screen's local state.
 //
 // Mid-flight streaming of per-host progress is intentionally out of
