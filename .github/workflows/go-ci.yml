@@ -45,9 +45,12 @@ jobs:
           go-version: '1.25'
           cache: true
 
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          # Pin a recent golangci-lint built against Go 1.25+. Older
+          # `version: latest` resolutions picked a 1.24-built binary that
+          # can't load modules with `go 1.25` in go.mod.
+          version: v2.1.6
           args: --timeout=5m
 
   snapshot:
