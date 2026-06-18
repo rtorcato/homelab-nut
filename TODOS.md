@@ -26,9 +26,9 @@ Progress: 4 / 5 closed
 
 ## Phase 2 — SSH + first apply ([epic #3](https://github.com/rtorcato/homelab-nut/issues/3)) · v0.1 Alpha
 
-Progress: 0 / 1 closed
+Progress: 1 / 1 closed
 
-- [ ] [#17 — SSH executor — key-based auth, known_hosts, streaming output](https://github.com/rtorcato/homelab-nut/issues/17)
+- [x] [#17 — SSH executor — key-based auth, known_hosts, streaming output](https://github.com/rtorcato/homelab-nut/issues/17)
 
 ## Phase 3 — All roles + status ([epic #4](https://github.com/rtorcato/homelab-nut/issues/4)) · v0.2 Beta
 
