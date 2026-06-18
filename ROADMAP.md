@@ -1,5 +1,15 @@
 # Roadmap — toward `homelab-nut` v1
 
+## Where we are (2026-06-18)
+
+**Released:** [v0.1.0-alpha](https://github.com/rtorcato/homelab-nut/releases/tag/v0.1.0-alpha) — first tagged build with cross-platform binaries via goreleaser.
+
+**Working today:** Go CLI scaffold + Cobra subcommands (`init`, `inventory list|validate|show|edit`, `version`) + 4-screen Bubble Tea TUI + strict YAML inventory + 3 of 5 setup roles wrapping the existing bash (nut-server, nut-client, exporter).
+
+**Mid-Phase-2:** SSH executor + role interface + 3 roles landed. Remaining for v0.1 Alpha completion: 2 more roles (shutdown-target, shutdown-daemon) and the `plan` / `apply` subcommands that wire everything into a user-visible flow.
+
+**Live status:** [TODOS.md](TODOS.md) (auto-synced from issues) and the [Phase 2 epic #3](https://github.com/rtorcato/homelab-nut/issues/3).
+
 ## Vision
 
 **Be the tool homelabbers reach for when they need NUT to actually do something.**
