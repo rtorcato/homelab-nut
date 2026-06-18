@@ -175,6 +175,9 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	case "o", "O":
+		openURL("https://github.com/rtorcato/homelab-nut")
+		return m, nil
 	}
 
 	// Screen-local navigation.
@@ -292,16 +295,7 @@ func (m rootModel) emptyDashboard() string {
 	default:
 		msg = "Inventory is empty."
 	}
-	text := emptyStateStyle.Render(msg + "\n\nPress  i  to set up your inventory (or run `homelab-nut init` outside the TUI).")
-
-	// Gate the mascot on terminal width — the rendered mascot block is
-	// ~34 cols (30 + padding) and the message box is ~95, so we need
-	// roughly 130 cols of headroom before showing both side-by-side.
-	// Narrower terminals fall back to message-only.
-	if m.width < 130 {
-		return text
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, mascotStyle.Render(mascotArt), text)
+	return emptyStateStyle.Render(msg + "\n\nPress  i  to set up your inventory (or run `homelab-nut init` outside the TUI).")
 }
 
 func (m rootModel) viewHosts() string {
@@ -359,6 +353,7 @@ func (m rootModel) viewHelp() string {
 		{"i", "set up inventory (empty-state Dashboard only)"},
 		{"e", "edit inventory in $EDITOR (any screen)"},
 		{"a / A", "run apply (any screen)"},
+		{"o", "open the project page in your browser"},
 		{"esc", "go back one screen"},
 		{"q / ctrl+c", "quit"},
 	}
