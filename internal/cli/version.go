@@ -13,11 +13,9 @@ func newVersionCmd(info BuildInfo) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if getOutputFormat(cmd) == outputJSON {
-				return emitJSON(cmd.OutOrStdout(), versionPayload{
-					Version: info.Version,
-					Commit:  info.Commit,
-					Date:    info.Date,
-				})
+				// versionPayload has the same fields as BuildInfo — direct
+				// conversion (staticcheck S1016) instead of struct literal.
+				return emitJSON(cmd.OutOrStdout(), versionPayload(info))
 			}
 			_, err := fmt.Fprintf(cmd.OutOrStdout(),
 				"homelab-nut %s\ncommit:  %s\nbuilt:   %s\n",
