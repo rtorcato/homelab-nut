@@ -154,7 +154,7 @@ func pollHost(ctx context.Context, h *inventory.Host, timeout time.Duration) sta
 		row.Error = sanitizeErr(err)
 		return row
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	list, err := client.ListUPS()
 	if err != nil {

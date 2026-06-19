@@ -50,7 +50,7 @@ func (f *fakeNUTServer) accept() {
 }
 
 func (f *fakeNUTServer) handle(c net.Conn) {
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	r := bufio.NewReader(c)
 	for {
 		line, err := r.ReadString('\n')
