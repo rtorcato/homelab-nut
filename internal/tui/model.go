@@ -75,6 +75,7 @@ type rootModel struct {
 	current       screen
 	selectedHost  int
 	apply         applyState
+	dashboard     dashboardState
 	// exitAction is set by 'i' or 'e' keys before tea.Quit, so the
 	// wrapping cobra command can dispatch a follow-up action
 	// (run init forms, open $EDITOR) and then relaunch the TUI.
@@ -94,7 +95,15 @@ func ExitAction(m tea.Model) string {
 	return ""
 }
 
-func (m rootModel) Init() tea.Cmd { return nil }
+func (m rootModel) Init() tea.Cmd {
+	// Kick off the first dashboard poll immediately, and arm the recurring
+	// tick. The tick fires regardless of which screen is active so the
+	// Dashboard shows fresh data whenever the user lands on it.
+	if m.inv == nil || len(m.inv.HostsWithRole(inventory.RoleNUTServer)) == 0 {
+		return nil
+	}
+	return tea.Batch(pollDashboard(m.inv), dashboardTick(dashboardInterval))
+}
 
 func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -115,6 +124,20 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.apply.logBuf != nil {
 			m.apply.logBuf.WriteString(msg.logs)
 		}
+		return m, nil
+	case dashboardTickMsg:
+		// Don't pile up overlapping polls if the previous one is still
+		// running — just rearm the tick. Per-host timeouts inside the
+		// poll cap how long inFlight stays true.
+		if m.dashboard.inFlight || m.inv == nil {
+			return m, dashboardTick(dashboardInterval)
+		}
+		m.dashboard.inFlight = true
+		return m, tea.Batch(pollDashboard(m.inv), dashboardTick(dashboardInterval))
+	case dashboardUpdatedMsg:
+		m.dashboard.rows = msg.rows
+		m.dashboard.updated = msg.at
+		m.dashboard.inFlight = false
 		return m, nil
 	}
 	return m, nil
@@ -177,6 +200,13 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "o", "O":
 		openURL("https://github.com/rtorcato/homelab-nut")
+		return m, nil
+	case "r", "R":
+		// Immediate refresh — independent of the tick cadence.
+		if m.inv != nil && !m.dashboard.inFlight {
+			m.dashboard.inFlight = true
+			return m, pollDashboard(m.inv)
+		}
 		return m, nil
 	}
 
@@ -264,24 +294,24 @@ func (m rootModel) viewDashboard() string {
 		return bodyStyle.Render(m.emptyDashboard())
 	}
 
-	rolesByHost := func(h inventory.Host) string {
-		strs := make([]string, len(h.Roles))
-		for i, r := range h.Roles {
-			strs[i] = r.String()
-		}
-		return strings.Join(strs, ", ")
+	width := m.width
+	if width <= 0 {
+		width = 80
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s %d host(s) configured at %s\n\n", titleStyle.Render("Inventory:"), len(m.inv.Hosts), m.inventoryPath)
-	for _, h := range m.inv.Hosts {
-		fmt.Fprintf(&b, "  %s · %s · %s\n", h.Name, h.Address, rolesByHost(h))
-	}
+	fmt.Fprintf(&b, "%s %d host(s) at %s\n\n",
+		titleStyle.Render("Inventory:"), len(m.inv.Hosts), m.inventoryPath)
+
+	b.WriteString(renderDashboardCards(m.dashboard.rows, width))
+	b.WriteString("\n")
+	b.WriteString(dashboardFooter(m.dashboard.rows, m.dashboard.updated))
+
 	if m.inv.ShutdownDaemon != nil {
 		d := m.inv.ShutdownDaemon
-		fmt.Fprintf(&b, "\n%s threshold=%d%%  poll=%ds", titleStyle.Render("Daemon:"), d.Threshold, d.PollInterval)
+		fmt.Fprintf(&b, "\n\n%s threshold=%d%%  poll=%ds",
+			titleStyle.Render("Daemon:"), d.Threshold, d.PollInterval)
 	}
-	b.WriteString("\n\nReal-time UPS status lands in Phase 3 (#4).")
 	return bodyStyle.Render(b.String())
 }
 
@@ -350,6 +380,7 @@ func (m rootModel) viewHelp() string {
 		{"?", "open this help"},
 		{"↑ ↓ / k j", "select host (Hosts screen)"},
 		{"enter", "drill into selected host"},
+		{"r / R", "refresh live UPS state now (Dashboard)"},
 		{"i", "set up inventory (empty-state Dashboard only)"},
 		{"e", "edit inventory in $EDITOR (any screen)"},
 		{"a / A", "run apply (any screen)"},
@@ -360,8 +391,20 @@ func (m rootModel) viewHelp() string {
 	for _, r := range rows {
 		fmt.Fprintf(&b, "  %s %s\n", labelStyle.Width(20).Render(r[0]), r[1])
 	}
+
 	b.WriteString("\n")
-	b.WriteString(hintStyle.Render("More screens (apply, live status, logs) land in Phase 2 and 3."))
+	b.WriteString(titleStyle.Render("UPS status codes"))
+	b.WriteString("\n\n")
+	for _, entry := range statusLegend {
+		fmt.Fprintf(&b, "  %s  %s\n",
+			labelStyle.Width(10).Render(statusBadge(entry.Row)),
+			entry.Meaning)
+	}
+
+	b.WriteString("\n")
+	b.WriteString(hintStyle.Render(
+		fmt.Sprintf("Dashboard auto-refreshes every %s. Press r to force a poll.",
+			dashboardInterval)))
 	return bodyStyle.Render(b.String())
 }
 

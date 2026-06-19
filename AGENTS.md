@@ -219,7 +219,7 @@ $ homelab-nut status -o json
 - **JSON schema:** array of host objects.
   - `host`, `address` — always present.
   - `ups` — name of the first UPS reported by the server (multi-UPS hosts pick the first; future schema may switch to an array).
-  - `status` — raw NUT status string (`OL`, `OB`, `OB LB`, `OL CHRG`, …). Multi-token values are kept as-is.
+  - `status` — raw NUT status string (`OL`, `OB`, `OB LB`, `OL CHRG`, …). Multi-token values are kept as-is. See the status code reference below.
   - `battery_charge`, `load` — float, percent (0–100).
   - `battery_runtime` — integer, seconds.
   - `error` — non-empty when the host couldn't be reached, the UPS couldn't be listed, or a var read failed. When set, the numeric fields are omitted.
@@ -231,6 +231,25 @@ $ homelab-nut status -o json
   - `-o text|json` — output format.
 - **Read-only** — opens TCP connections to upsd; never SSHes anywhere.
 - **Exit:** 0 in all cases; per-host failures surface in the `error` field rather than the exit code. Use `jq -e 'all(.error == null)'` if you want a fleet-wide pass/fail signal.
+
+**Status code reference.** NUT emits short tokens for `ups.status`; multiple tokens may be combined with spaces.
+
+| Token | Meaning | Severity |
+|---|---|---|
+| `OL` | On Line — utility power, healthy | ok |
+| `OL CHRG` | On Line, battery is charging | ok |
+| `OB` | On Battery — utility power out, UPS sustaining load | warn |
+| `OB LB` | On Battery + Low Battery — imminent shutdown | critical |
+| `LB` | Low Battery (regardless of OL/OB) | critical |
+| `RB` | Replace Battery | warn |
+| `CHRG` / `DISCHRG` | Charging / Discharging modifier | informational |
+| `BYPASS` | Bypass active (load on raw mains) | warn |
+| `CAL` | Calibration in progress | informational |
+| `OVER` / `TRIM` / `BOOST` | Overload / voltage trim / voltage boost | warn |
+| `FSD` | Forced Shutdown initiated | critical |
+| `OFF` | UPS reports itself offline | warn |
+
+The TUI Dashboard color-codes badges using OL → green, OB → amber, anything with `LB` → red, errors → red `ERR`, empty/unknown → grey `?`. Scripts consuming `-o json` should parse `status` themselves and apply whatever rules they need — the JSON contract just carries the raw NUT string.
 
 ### `homelab-nut version`
 
