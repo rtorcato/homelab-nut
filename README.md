@@ -44,6 +44,8 @@ homelab-nut inventory list -o json | jq .     # array of host objects
 homelab-nut inventory validate -o json        # { "valid": bool, "errors": [...] }
 homelab-nut plan -o json                      # dry-run, full diff tree
 homelab-nut apply --auto-approve -o json      # execute, summary as JSON
+homelab-nut status -o json                    # live UPS state via NUT protocol (port 3493)
+homelab-nut status --watch                    # text dashboard, refreshes every 5s
 homelab-nut version -o json                   # { "version", "commit", "date" }
 ```
 
@@ -61,6 +63,28 @@ Full agent contract in **[AGENTS.md](AGENTS.md)** — common flows, JSON schemas
 | `1` | Validation / config error (user-fixable) |
 | `2` | Network / SSH error (transient — retry-safe) |
 | `3` | Apply partial failure (some hosts OK, some failed) |
+
+## UPS status codes
+
+`status` (CLI and TUI Dashboard) reports the raw NUT `ups.status` string. Multiple tokens combine with spaces — `OL CHRG` means "on line and charging," `OB LB` means "on battery, low battery."
+
+| Token | Meaning | TUI badge |
+|---|---|---|
+| `OL` | On Line — utility power, healthy | 🟢 green |
+| `OL CHRG` | On Line, battery is charging | 🟢 green |
+| `OB` | On Battery — utility power out, UPS sustaining | 🟠 amber |
+| `OB LB` | On Battery + Low Battery — imminent shutdown | 🔴 red |
+| `LB` | Low Battery (regardless of OL/OB) | 🔴 red |
+| `RB` | Replace Battery | warn |
+| `BYPASS` | Load on raw mains (UPS bypassed) | warn |
+| `FSD` | Forced Shutdown initiated | 🔴 red |
+| `CHRG` / `DISCHRG` | Charging / discharging modifier | informational |
+| `OVER` / `TRIM` / `BOOST` | Overload / voltage trim / voltage boost | warn |
+| `OFF` | UPS reports itself offline | warn |
+| _(host error)_ | Unreachable / protocol error | 🔴 red `ERR` |
+| _(empty)_ | upsd responded but reported no status | ⚫ grey `?` |
+
+Full reference, including the JSON schema for `status -o json`, lives in **[AGENTS.md](AGENTS.md#homelab-nut-status)**.
 
 See **[ROADMAP.md](ROADMAP.md)** for what's coming and **[TODOS.md](TODOS.md)** for live status.
 

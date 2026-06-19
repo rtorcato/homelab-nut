@@ -72,4 +72,40 @@ var (
 			Foreground(palette.muted).
 			Italic(true).
 			Padding(1, 2)
+
+	// Dashboard cards: subtle border, tight padding, one host per box.
+	cardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(palette.border).
+			Padding(0, 1).
+			Margin(0, 1, 1, 0)
+
+	hostNameStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(palette.heading)
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ef4444"))
+
+	// Status badges use the same chip-shape across severity levels so
+	// they line up visually when several cards sit side-by-side.
+	badgeOKStyle = lipgloss.NewStyle().
+			Background(palette.primary).
+			Foreground(lipgloss.Color("#000")).
+			Bold(true)
+
+	badgeWarnStyle = lipgloss.NewStyle().
+			Background(palette.mascot).
+			Foreground(lipgloss.Color("#000")).
+			Bold(true)
+
+	badgeErrorStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("#ef4444")).
+			Foreground(lipgloss.Color("#000")).
+			Bold(true)
+
+	badgeMutedStyle = lipgloss.NewStyle().
+			Background(palette.border).
+			Foreground(palette.muted).
+			Bold(true)
 )
