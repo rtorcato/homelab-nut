@@ -50,8 +50,9 @@ homelab-nut apply --auto-approve -o json
 ### "What's the current state?"
 
 ```bash
-homelab-nut inventory list -o json            # all hosts + their roles
+homelab-nut inventory list -o json            # all hosts + their roles (declarative)
 homelab-nut plan -o json                      # full diff tree (Detect ran against each host)
+homelab-nut status -o json                    # live UPS state via the NUT protocol
 ```
 
 ### "Bulk-validate inventory across multiple files in CI"
@@ -190,6 +191,46 @@ $ homelab-nut apply --auto-approve -o json
 - **Per-role output:** in text mode, streamed with `[host/role]` prefix as roles run. In JSON mode, role output is captured but not surfaced in the summary (the orchestrator writes to `io.Discard`) — the `result.hosts[].errors` array carries the failure detail.
 - **Exit:** 0 success, 1 plan-time validation error, 3 apply partial failure.
 - **Flags:** `--auto-approve/-y`, `--concurrency N` (max parallel hosts; 0 = unlimited).
+
+### `homelab-nut status`
+
+Polls each host with the `nut-server` role over the NUT TCP protocol (port 3493, native Go client — no `upsc` dependency) and reports live UPS state.
+
+```
+$ homelab-nut status -o json
+[
+  {
+    "host": "pi-rack",
+    "address": "192.0.2.10",
+    "ups": "myups",
+    "status": "OL",
+    "battery_charge": 85,
+    "battery_runtime": 1800,
+    "load": 12
+  },
+  {
+    "host": "office",
+    "address": "192.0.2.11",
+    "error": "timeout"
+  }
+]
+```
+
+- **JSON schema:** array of host objects.
+  - `host`, `address` — always present.
+  - `ups` — name of the first UPS reported by the server (multi-UPS hosts pick the first; future schema may switch to an array).
+  - `status` — raw NUT status string (`OL`, `OB`, `OB LB`, `OL CHRG`, …). Multi-token values are kept as-is.
+  - `battery_charge`, `load` — float, percent (0–100).
+  - `battery_runtime` — integer, seconds.
+  - `error` — non-empty when the host couldn't be reached, the UPS couldn't be listed, or a var read failed. When set, the numeric fields are omitted.
+  - All numeric fields and `ups`, `status`, `error` use `omitempty` — distinguish "unknown" from a zero reading by checking presence, not value.
+- **Hosts without `nut-server`** in their roles are skipped. An inventory with no nut-server hosts emits `null` / `[]`.
+- **Flags:**
+  - `--watch / -w` — redraw on `--interval` (default 5s) until Ctrl+C. In JSON mode, each tick emits a fresh array on its own line (NDJSON-friendly streaming consumers can read line-by-line).
+  - `--timeout` — per-host TCP connect + read deadline (default 2s).
+  - `-o text|json` — output format.
+- **Read-only** — opens TCP connections to upsd; never SSHes anywhere.
+- **Exit:** 0 in all cases; per-host failures surface in the `error` field rather than the exit code. Use `jq -e 'all(.error == null)'` if you want a fleet-wide pass/fail signal.
 
 ### `homelab-nut version`
 
