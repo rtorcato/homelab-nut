@@ -107,7 +107,7 @@ scripts/                     # canonical bash scripts (the "wrap" side of wrap-t
 apps/docs/                   # Docusaurus site (deployed to GitHub Pages)
 examples/                    # homelab-nut.yaml + Grafana dashboard
 docker/                      # Docker compose (nut-exporter + nut-webgui)
-.github/workflows/           # CI: Go CI, shellcheck CI, TODO check, docs deploy, release, TODOs sync
+.github/workflows/           # CI: Go CI, shellcheck CI, TODO check, docs deploy, release
 ```
 
 ---
@@ -155,7 +155,7 @@ gh issue create --title "..." --label "phase-N,area/..." --milestone "..." --bod
 | Question | File |
 |---|---|
 | What's the project's vision and phasing? | [ROADMAP.md](ROADMAP.md) |
-| What's open / in-flight right now? | [TODOS.md](TODOS.md) (auto-synced from issues) |
+| What's open / in-flight right now? | [TODOS.md](TODOS.md) (regenerate with `make todos`) |
 | How do contributors propose changes? | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | How do AI agents *use* the tool? | [AGENTS.md](AGENTS.md) |
 | Full CLI reference with subcommand schemas | [Docs site](https://rtorcato.github.io/homelab-nut/docs/cli) |

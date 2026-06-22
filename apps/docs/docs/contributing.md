@@ -42,7 +42,7 @@ The canonical contributing guide is [CONTRIBUTING.md](https://github.com/rtorcat
 ## How work is tracked
 
 - [ROADMAP.md](https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md) — vision, phases, milestones
-- [TODOS.md](https://github.com/rtorcato/homelab-nut/blob/main/TODOS.md) — live index of open issues (auto-synced)
+- [TODOS.md](https://github.com/rtorcato/homelab-nut/blob/main/TODOS.md) — index of open issues (regenerate with `make todos`)
 - [Issues](https://github.com/rtorcato/homelab-nut/issues) — grouped by `phase-N` labels; filter by [`good first issue`](https://github.com/rtorcato/homelab-nut/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) if you're new
 
 ## Code of Conduct
