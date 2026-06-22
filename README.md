@@ -16,7 +16,23 @@ sudo install homelab-nut /usr/local/bin/
 homelab-nut version
 ```
 
-Build from source: `make build`. Homebrew tap + one-line `install.sh` land in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5).
+Homebrew tap + one-line `install.sh` land in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5).
+
+### Build or run from source (development)
+
+Go 1.25+ required (`brew install go`).
+
+```bash
+make run                      # build bin/homelab-nut and launch the TUI
+make build                    # just compile -> bin/homelab-nut (versioned)
+./bin/homelab-nut             # run the built binary
+
+# Run straight from source without building a binary:
+go run ./cmd/homelab-nut                                                # TUI
+go run ./cmd/homelab-nut -i examples/homelab-nut.yaml inventory list    # a subcommand
+```
+
+`make help` lists every dev target (`test`, `lint`, `docs-dev`, …). See **[CLAUDE.md](CLAUDE.md)** for the full build/test/lint reference and contributor workflow.
 
 ## Run it
 
