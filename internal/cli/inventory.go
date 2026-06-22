@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
@@ -13,15 +14,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// defaultInventoryPath is the conventional location: ./homelab-nut.yaml.
-const defaultInventoryPath = "homelab-nut.yaml"
+// inventoryFileName is the conventional inventory filename, looked up in
+// both the current directory and the user's home directory.
+const inventoryFileName = "homelab-nut.yaml"
+
+// defaultInventoryPath resolves the inventory location used when no
+// --inventory/-i flag is given. It prefers a project-local file in the
+// current directory (backward compatible) and otherwise falls back to a
+// stable per-user file in the home directory, so the command works from
+// any directory without -i. Both load and save (init) use this, so
+// `init` with no project-local file writes to ~/homelab-nut.yaml.
+func defaultInventoryPath() string {
+	if _, err := os.Stat(inventoryFileName); err == nil {
+		return inventoryFileName
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, inventoryFileName)
+	}
+	return inventoryFileName
+}
+
+// inventoryPath returns the inventory path for a command: the explicit
+// --inventory/-i value when given, otherwise the resolved default.
+func inventoryPath(cmd *cobra.Command) string {
+	if p, _ := cmd.Flags().GetString("inventory"); p != "" {
+		return p
+	}
+	return defaultInventoryPath()
+}
 
 func newInventoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inventory",
 		Short: "Inspect and edit the homelab-nut inventory",
-		Long: `The inventory is a YAML file (default: ./homelab-nut.yaml) describing the
-hosts in your homelab, their roles, and the UPS attachments.
+		Long: `The inventory is a YAML file describing the hosts in your homelab,
+their roles, and the UPS attachments. With no --inventory/-i flag,
+homelab-nut uses ./homelab-nut.yaml if present, otherwise
+~/homelab-nut.yaml.
 
 Subcommands let you list hosts, validate the file, show a single host,
 or open the file in your $EDITOR (re-validating on save).`,
@@ -39,7 +68,7 @@ func newInventoryListCmd() *cobra.Command {
 		Short: "Print a table of hosts (or JSON with -o json)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			inv, err := loadInventoryOrReport(cmd.ErrOrStderr(), path)
 			if err != nil {
 				return err
@@ -60,7 +89,7 @@ func newInventoryValidateCmd() *cobra.Command {
 		Short: "Check the inventory against the schema and rules",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			_, err := inventory.Load(path)
 			if getOutputFormat(cmd) == outputJSON {
 				return emitValidateJSON(cmd.OutOrStdout(), path, err)
@@ -115,7 +144,7 @@ func newInventoryShowCmd() *cobra.Command {
 		Short: "Show details for one host (or JSON with -o json)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			inv, err := loadInventoryOrReport(cmd.ErrOrStderr(), path)
 			if err != nil {
 				return err
@@ -140,7 +169,7 @@ func newInventoryEditCmd() *cobra.Command {
 		Short: "Open the inventory in $EDITOR and re-validate on save",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 
 			editor := os.Getenv("EDITOR")
 			if editor == "" {

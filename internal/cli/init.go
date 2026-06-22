@@ -17,8 +17,9 @@ func newInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Generate homelab-nut.yaml interactively",
-		Long: `Walks through a guided form, then writes the resulting inventory
-to ./homelab-nut.yaml (or the path given via --inventory).
+		Long: `Walks through a guided form, then writes the resulting inventory.
+With no --inventory/-i flag it writes ./homelab-nut.yaml when that file
+already exists, otherwise ~/homelab-nut.yaml.
 
 If an inventory already exists, you'll be asked whether to overwrite it.
 
@@ -26,7 +27,7 @@ This subcommand and the TUI's empty-state 'i' shortcut run the same forms —
 use whichever fits your context.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			return runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path)
 		},
 	}
