@@ -66,6 +66,61 @@ func TestRemoteNodesFromInventory(t *testing.T) {
 	}
 }
 
+func TestSanitizeNodeHost(t *testing.T) {
+	cases := map[string]string{
+		"10.0.10.125":   "10_0_10_125",
+		"dream-machine": "dream_machine",
+		"nas.local":     "nas_local",
+		"unas-pro.lan":  "unas_pro_lan",
+		"192.0.2.1":     "192_0_2_1",
+		"plainhost":     "plainhost",
+	}
+	for in, want := range cases {
+		if got := sanitizeNodeHost(in); got != want {
+			t.Errorf("sanitizeNodeHost(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestRemoteCmdsFromInventory(t *testing.T) {
+	cases := []struct {
+		name string
+		inv  *inventory.Inventory
+		want string
+	}{
+		{"nil", nil, ""},
+		{"empty", &inventory.Inventory{}, ""},
+		{
+			"target without command — no override",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "ws", User: "admin", Address: "192.0.2.20", Roles: []inventory.Role{inventory.RoleShutdownTarget}},
+			}},
+			"",
+		},
+		{
+			"inline command target (the UniFi case)",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff"}},
+			}},
+			"CMD_10_0_10_125=poweroff",
+		},
+		{
+			"multiple targets, inventory order, non-targets skipped",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "pi", User: "pi", Address: "192.0.2.10", Roles: []inventory.Role{inventory.RoleNUTServer, inventory.RoleShutdownDaemon}},
+				{Name: "ws", User: "admin", Address: "192.0.2.20", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "~/shutdown.sh"}},
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff"}},
+			}},
+			"CMD_192_0_2_20=~/shutdown.sh\nCMD_10_0_10_125=poweroff",
+		},
+	}
+	for _, tc := range cases {
+		if got := remoteCmdsFromInventory(tc.inv); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestUPSRefFromInventory(t *testing.T) {
 	cases := []struct {
 		name string
@@ -149,6 +204,34 @@ func TestShutdownDaemon_PlanProducesActions(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Errorf("Plan actions missing %q\n%s", want, joined)
 		}
+	}
+}
+
+func TestShutdownDaemon_PlanSurfacesPerTargetCommands(t *testing.T) {
+	r := shutdownDaemon{}
+	daemonHost := inventory.Host{
+		Name: "pi", Address: "192.0.2.10", User: "pi",
+		Roles: []inventory.Role{inventory.RoleNUTServer, inventory.RoleShutdownDaemon},
+		UPS:   &inventory.UPS{Name: "myups", Driver: "usbhid-ups"},
+	}
+	nas := inventory.Host{
+		Name: "nas", Address: "10.0.10.125", User: "root",
+		Roles:    []inventory.Role{inventory.RoleShutdownTarget},
+		Shutdown: &inventory.Shutdown{Command: "poweroff"},
+	}
+	inv := &inventory.Inventory{
+		Hosts:          []inventory.Host{daemonHost, nas},
+		ShutdownDaemon: &inventory.ShutdownDaemon{Threshold: 50, PollInterval: 30},
+	}
+	ctx := WithInventory(context.TODO(), inv)
+
+	d, err := r.Plan(ctx, nil, &daemonHost)
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	joined := strings.Join(d.Actions, "\n")
+	if !strings.Contains(joined, "CMD_10_0_10_125=poweroff") {
+		t.Errorf("Plan should surface the per-target command override, got:\n%s", joined)
 	}
 }
 

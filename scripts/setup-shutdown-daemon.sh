@@ -16,6 +16,8 @@
 #   REMOTE_SHUTDOWN_CMD      default: ~/shutdown.sh
 #   LOG_FILE                 default: /var/log/ups-battery-shutdown.log
 #   SLACK_WEBHOOK            empty = Slack disabled
+#   REMOTE_CMDS_B64          base64 of newline-joined "CMD_<host>=<cmd>" per-target
+#                            command overrides; empty = none (all use the default)
 #
 # Outputs the daemon's SSH public key on stdout so the caller can
 # distribute it to each shutdown-target's authorized_keys.
@@ -65,6 +67,17 @@ LOG_FILE=${LOG_FILE}
 EOF
 if [[ -n "$SLACK_WEBHOOK" ]]; then
     echo "SLACK_WEBHOOK=${SLACK_WEBHOOK}" >> "$CONF_DST"
+fi
+# Per-target command overrides (CMD_<host>=cmd). Without these, every node
+# falls back to REMOTE_SHUTDOWN_CMD — which breaks targets that need an inline
+# command (e.g. UniFi devices that can't host ~/shutdown.sh).
+REMOTE_CMDS_B64="${REMOTE_CMDS_B64:-}"
+if [[ -n "$REMOTE_CMDS_B64" ]]; then
+    DECODED_CMDS="$(echo "$REMOTE_CMDS_B64" | base64 -d)"
+    if [[ -n "$DECODED_CMDS" ]]; then
+        log "writing per-target command overrides"
+        printf '%s\n' "$DECODED_CMDS" >> "$CONF_DST"
+    fi
 fi
 chmod 640 "$CONF_DST"
 
