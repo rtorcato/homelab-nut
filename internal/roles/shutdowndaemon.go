@@ -49,6 +49,35 @@ func remoteNodesFromInventory(inv *inventory.Inventory) string {
 	return strings.Join(nodes, " ")
 }
 
+// sanitizeNodeHost mirrors battery-shutdown.sh's hostname sanitization
+// (the address portion, with '-' and '.' replaced by '_') so the
+// CMD_<host> override keys we emit line up exactly with what the daemon
+// looks up per node at trigger time.
+func sanitizeNodeHost(address string) string {
+	s := strings.ReplaceAll(address, "-", "_")
+	return strings.ReplaceAll(s, ".", "_")
+}
+
+// remoteCmdsFromInventory builds the per-target "CMD_<host>=<command>"
+// override lines for every shutdown-target that declares a command in the
+// inventory. Returned newline-joined and in inventory order (may be empty).
+// Without these the daemon falls back to REMOTE_SHUTDOWN_CMD for every node,
+// which silently breaks inline-command targets (e.g. UniFi `poweroff`).
+func remoteCmdsFromInventory(inv *inventory.Inventory) string {
+	if inv == nil {
+		return ""
+	}
+	lines := make([]string, 0)
+	for i := range inv.Hosts {
+		h := &inv.Hosts[i]
+		if !h.HasRole(inventory.RoleShutdownTarget) || h.Shutdown == nil || h.Shutdown.Command == "" {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("CMD_%s=%s", sanitizeNodeHost(h.Address), h.Shutdown.Command))
+	}
+	return strings.Join(lines, "\n")
+}
+
 // upsRefFromInventory returns the local UPS reference for the daemon
 // host (assumes the daemon runs on the nut-server host — common config).
 // Defaults to "myups@localhost" if no nut-server is colocated.
@@ -108,6 +137,7 @@ func (r shutdownDaemon) Plan(ctx context.Context, conn *ssh.Connection, h *inven
 	// Resolve cross-host data when inventory is available.
 	inv := inventoryFrom(ctx)
 	remoteNodes := "(resolved at apply time)"
+	cmdOverrides := ""
 	threshold := 50
 	pollInterval := 30
 	if inv != nil {
@@ -115,6 +145,7 @@ func (r shutdownDaemon) Plan(ctx context.Context, conn *ssh.Connection, h *inven
 		if remoteNodes == "" {
 			return nil, fmt.Errorf("shutdown-daemon on %s: inventory has no hosts with role 'shutdown-target' — nothing for the daemon to power down", h.Name)
 		}
+		cmdOverrides = remoteCmdsFromInventory(inv)
 		if inv.ShutdownDaemon != nil {
 			threshold = inv.ShutdownDaemon.Threshold
 			pollInterval = inv.ShutdownDaemon.PollInterval
@@ -130,8 +161,12 @@ func (r shutdownDaemon) Plan(ctx context.Context, conn *ssh.Connection, h *inven
 		"generate /root/.ssh/id_ed25519_ups if missing",
 		"install + enable + restart ups-battery-shutdown.service",
 		fmt.Sprintf("targets: %s", remoteNodes),
-		"output public key for manual distribution to shutdown-targets",
 	}
+	if cmdOverrides != "" {
+		d.Actions = append(d.Actions,
+			fmt.Sprintf("per-target shutdown commands: %s", strings.ReplaceAll(cmdOverrides, "\n", ", ")))
+	}
+	d.Actions = append(d.Actions, "output public key for manual distribution to shutdown-targets")
 	return d, nil
 }
 
@@ -168,17 +203,21 @@ func (r shutdownDaemon) Apply(ctx context.Context, conn *ssh.Connection, h *inve
 		return err
 	}
 	daemonB64 := base64.StdEncoding.EncodeToString(daemonScript)
+	// Per-target command overrides, base64'd so newline-joined lines survive
+	// the env var cleanly (same single-stdin reasoning as the daemon script).
+	remoteCmdsB64 := base64.StdEncoding.EncodeToString([]byte(remoteCmdsFromInventory(inv)))
 
 	// Wire all the inputs via env vars on the remote sudo invocation.
 	// We pass the daemon's bytes as a base64 env var so the orchestrator
 	// script only needs a single stdin (itself).
 	cmd := fmt.Sprintf(
-		`sudo HOMELAB_NUT_DAEMON_B64=%q UPS=%q THRESHOLD=%d POLL_INTERVAL=%d REMOTE_NODES=%q SLACK_WEBHOOK=%q bash -s --`,
+		`sudo HOMELAB_NUT_DAEMON_B64=%q UPS=%q THRESHOLD=%d POLL_INTERVAL=%d REMOTE_NODES=%q REMOTE_CMDS_B64=%q SLACK_WEBHOOK=%q bash -s --`,
 		daemonB64,
 		upsRefFromInventory(h),
 		threshold,
 		pollInterval,
 		remoteNodes,
+		remoteCmdsB64,
 		slackWebhook,
 	)
 

@@ -35,8 +35,17 @@ POLL_INTERVAL=30
 REMOTE_SHUTDOWN_CMD="~/shutdown.sh"
 LOG_FILE=""
 SLACK_WEBHOOK=""
+SSH_KEY=""
 
 [[ -f "$CONF" ]] && source "$CONF"
+
+# Use the daemon's dedicated key when configured. The daemon runs as root,
+# which usually has no default-named key (~/.ssh/id_ed25519 etc.), so without
+# this the SSH below has no identity to offer and auth fails. SSH_OPTS is
+# intentionally word-split in the ssh calls, so SSH_KEY must be path-only.
+if [[ -n "$SSH_KEY" ]]; then
+    SSH_OPTS="-i $SSH_KEY $SSH_OPTS"
+fi
 
 # Date-stamp the log filename (foo.log → foo-2026-05-14.log) so each day gets its own file
 if [[ -n "$LOG_FILE" ]]; then
