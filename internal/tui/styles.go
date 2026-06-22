@@ -55,11 +55,10 @@ var (
 			Foreground(palette.muted).
 			Width(10)
 
-	hostItemStyle = lipgloss.NewStyle().
-			Padding(0, 1)
-
-	activeHostItemStyle = lipgloss.NewStyle().
-				Padding(0, 1).
+	// selectedRowStyle highlights the cursor row on the Hosts tab. It
+	// carries no padding so it can wrap an already-aligned, fixed-width
+	// cell block without shifting columns.
+	selectedRowStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(palette.primary)
 
