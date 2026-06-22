@@ -30,7 +30,7 @@ With --watch, the command redraws every --interval until Ctrl+C; in JSON
 mode each tick emits a fresh JSON array on its own line (NDJSON-friendly).`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			watch, _ := cmd.Flags().GetBool("watch")
 			interval, _ := cmd.Flags().GetDuration("interval")
 			timeout, _ := cmd.Flags().GetDuration("timeout")

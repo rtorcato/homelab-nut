@@ -69,7 +69,7 @@ done
 
 ## Subcommand reference
 
-Every subcommand respects the global `--inventory` / `-i` flag (default `./homelab-nut.yaml`) and the `--output` / `-o` flag (default `text`, alternative `json`).
+Every subcommand respects the global `--inventory` / `-i` flag and the `--output` / `-o` flag (default `text`, alternative `json`). When `-i` is omitted, the inventory path resolves to `./homelab-nut.yaml` if it exists in the current directory, otherwise `~/homelab-nut.yaml` — so the tool works from any directory. `init` writes to the same resolved location.
 
 ### `homelab-nut init`
 

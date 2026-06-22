@@ -21,7 +21,7 @@ Use the same flags as ` + "`apply`" + ` so you can dry-run with one
 command and execute with another.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			return runPlan(cmd.OutOrStdout(), cmd.ErrOrStderr(), path, getOutputFormat(cmd))
 		},
 	}

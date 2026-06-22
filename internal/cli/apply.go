@@ -22,7 +22,7 @@ role with a non-empty diff. Streams each role's output prefixed with
 [host/role] so concurrent fleet output stays attributable.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			autoApprove, _ := cmd.Flags().GetBool("auto-approve")
 			concurrency, _ := cmd.Flags().GetInt("concurrency")
 			return runApply(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path, autoApprove, concurrency, getOutputFormat(cmd))

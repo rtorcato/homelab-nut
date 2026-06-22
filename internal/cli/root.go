@@ -50,13 +50,15 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 		// init and edit suspend the TUI, run the relevant flow, then
 		// relaunch the TUI so the user lands back where they started.
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _ := cmd.Flags().GetString("inventory")
+			path := inventoryPath(cmd)
 			return runTUILoop(cmd, info.Version, path)
 		},
 	}
 
-	cmd.PersistentFlags().StringP("inventory", "i", defaultInventoryPath,
-		"path to the inventory YAML file")
+	// Empty default so --help / generated docs don't bake in a
+	// machine-specific home path; inventoryPath() resolves it at runtime.
+	cmd.PersistentFlags().StringP("inventory", "i", "",
+		"path to the inventory YAML file (default: ./homelab-nut.yaml if present, else ~/homelab-nut.yaml)")
 
 	cmd.SetVersionTemplate("{{ .Version }}\n")
 	cmd.AddCommand(newVersionCmd(info))
