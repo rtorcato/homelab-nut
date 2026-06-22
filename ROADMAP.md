@@ -8,7 +8,7 @@
 
 **Mid-Phase-2:** SSH executor + role interface + 3 roles landed. Remaining for v0.1 Alpha completion: 2 more roles (shutdown-target, shutdown-daemon) and the `plan` / `apply` subcommands that wire everything into a user-visible flow.
 
-**Live status:** [TODOS.md](TODOS.md) (auto-synced from issues) and the [Phase 2 epic #3](https://github.com/rtorcato/homelab-nut/issues/3).
+**Live status:** [TODOS.md](TODOS.md) (regenerate from issues with `make todos`) and the [Phase 2 epic #3](https://github.com/rtorcato/homelab-nut/issues/3).
 
 ## Vision
 

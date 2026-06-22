@@ -5,7 +5,7 @@ title: Roadmap
 
 # Roadmap
 
-The canonical roadmap lives at [ROADMAP.md](https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md) in the repo. Live status of open work is at [TODOS.md](https://github.com/rtorcato/homelab-nut/blob/main/TODOS.md) (auto-synced from GitHub Issues).
+The canonical roadmap lives at [ROADMAP.md](https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md) in the repo. Live status of open work is at [TODOS.md](https://github.com/rtorcato/homelab-nut/blob/main/TODOS.md) (regenerated from GitHub Issues with `make todos`).
 
 This page is a thin summary. Read those for the full plan.
 
