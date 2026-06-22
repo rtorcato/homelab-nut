@@ -71,7 +71,12 @@ jobs:
           fi
           git add TODOS.md
           git commit -m "chore(todos): sync TODOS.md from GitHub Issues"
-          git push --force-with-lease origin "$BRANCH"
+          # Plain --force (not --force-with-lease): the runner only fetches
+          # origin/main, so it has no fresh remote-tracking ref for $BRANCH and
+          # --force-with-lease always rejects with "stale info". The branch is
+          # bot-owned and reset to main every run, and concurrency:cancel-in-progress
+          # serializes runs, so there's no human work to clobber.
+          git push --force origin "$BRANCH"
 
           # Reuse an existing PR if one is open; else open a new one and
           # queue it for auto-merge.
