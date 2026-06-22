@@ -328,22 +328,6 @@ func (m rootModel) emptyDashboard() string {
 	return emptyStateStyle.Render(msg + "\n\nPress  i  to set up your inventory (or run `homelab-nut init` outside the TUI).")
 }
 
-func (m rootModel) viewHosts() string {
-	if m.inv == nil || len(m.inv.Hosts) == 0 {
-		return bodyStyle.Render(m.emptyDashboard())
-	}
-	var b strings.Builder
-	for i, h := range m.inv.Hosts {
-		line := fmt.Sprintf("%s  %s  %s", h.Name, h.Address, h.User)
-		if i == m.selectedHost {
-			fmt.Fprintf(&b, "▸ %s\n", activeHostItemStyle.Render(line))
-		} else {
-			fmt.Fprintf(&b, "  %s\n", hostItemStyle.Render(line))
-		}
-	}
-	return bodyStyle.Render(b.String())
-}
-
 func (m rootModel) viewHost() string {
 	if m.inv == nil || m.selectedHost >= len(m.inv.Hosts) {
 		return bodyStyle.Render(emptyStateStyle.Render("No host selected. Press esc to return."))
