@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/rtorcato/homelab-nut/internal/inventory"
 	"github.com/rtorcato/homelab-nut/internal/upspoll"
 )
 
@@ -88,8 +89,8 @@ func TestDashboardCardsReflowOnWidth(t *testing.T) {
 		{Host: "b", Address: "2.2.2.2", UPS: "u", Status: "OL"},
 		{Host: "c", Address: "3.3.3.3", UPS: "u", Status: "OL"},
 	}
-	narrow := renderDashboardCards(rows, 40)
-	wide := renderDashboardCards(rows, 200)
+	narrow := renderDashboardCards(rows, 40, -1)
+	wide := renderDashboardCards(rows, 200, -1)
 
 	// Narrow: each card on its own line — at least as many lines as
 	// cards (cards are multi-line themselves so a generous lower bound
@@ -124,6 +125,54 @@ func TestDashboardUpdatedMsgPopulatesRowsAndClearsInFlight(t *testing.T) {
 	}
 	if !got.updated.Equal(now) {
 		t.Errorf("updated = %v, want %v", got.updated, now)
+	}
+}
+
+func TestDashboardArrowsMoveSelectionAndSyncHost(t *testing.T) {
+	// fixtureInventory: host[0]=pi (nut-server), host[1]=ws (no nut-server).
+	// Dashboard rows are nut-server hosts only, so a second card needs a
+	// second nut-server host. Build a 2-card row set whose names map back
+	// to real inventory hosts.
+	inv := fixtureInventory()
+	inv.Hosts = append(inv.Hosts, inventory.Host{
+		Name: "pi2", Address: "192.0.2.30", User: "pi",
+		Roles: []inventory.Role{inventory.RoleNUTServer},
+		UPS:   &inventory.UPS{Name: "u2", Driver: "usbhid-ups"},
+	})
+	m := modelWithInventory(inv)
+	m.current = screenDashboard
+	m.dashboard.rows = []upspoll.Row{{Host: "pi"}, {Host: "pi2"}}
+
+	// down -> select second card, selectedHost syncs to inventory index 2.
+	nm, _ := tea.Model(m).Update(key("down"))
+	rm := nm.(rootModel)
+	if rm.dashSelected != 1 {
+		t.Errorf("after down: dashSelected = %d, want 1", rm.dashSelected)
+	}
+	if rm.selectedHost != 2 {
+		t.Errorf("after down: selectedHost = %d, want 2 (pi2)", rm.selectedHost)
+	}
+
+	// enter -> drill into host detail for the synced host.
+	nm2, _ := tea.Model(rm).Update(key("enter"))
+	if got := nm2.(rootModel).current; got != screenHost {
+		t.Errorf("after enter: current = %v, want Host", got)
+	}
+
+	// up at top clamps at 0.
+	rm.dashSelected = 0
+	nm3, _ := tea.Model(rm).Update(key("up"))
+	if got := nm3.(rootModel).dashSelected; got != 0 {
+		t.Errorf("up at top: dashSelected = %d, want 0", got)
+	}
+}
+
+func TestDashboardSelectionClampsWhenRowsShrink(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.dashSelected = 3
+	newM, _ := tea.Model(m).Update(dashboardUpdatedMsg{rows: []upspoll.Row{{Host: "pi"}}, at: time.Now()})
+	if got := newM.(rootModel).dashSelected; got != 0 {
+		t.Errorf("dashSelected should clamp to 0 when rows shrink, got %d", got)
 	}
 }
 

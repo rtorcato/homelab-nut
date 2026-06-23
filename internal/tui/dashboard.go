@@ -65,8 +65,9 @@ func pollDashboard(inv *inventory.Inventory) tea.Cmd {
 
 // renderDashboardCards lays out one card per row using the available
 // terminal width. Cards reflow into multiple per-row columns when the
-// terminal is wide enough.
-func renderDashboardCards(rows []upspoll.Row, width int) string {
+// terminal is wide enough. selected is the index of the focused card
+// (highlighted with the accent border); pass -1 for no selection.
+func renderDashboardCards(rows []upspoll.Row, width, selected int) string {
 	if len(rows) == 0 {
 		return emptyStateStyle.Render(
 			"No nut-server hosts in this inventory.\n\n" +
@@ -75,7 +76,7 @@ func renderDashboardCards(rows []upspoll.Row, width int) string {
 
 	cards := make([]string, len(rows))
 	for i, r := range rows {
-		cards[i] = renderCard(r)
+		cards[i] = renderCard(r, i == selected)
 	}
 
 	// One card per row when the terminal is narrow; pack columns when wide.
@@ -101,8 +102,9 @@ func renderDashboardCards(rows []upspoll.Row, width int) string {
 	return b.String()
 }
 
-// renderCard builds one fixed-width card for a single host.
-func renderCard(r upspoll.Row) string {
+// renderCard builds one fixed-width card for a single host. When selected
+// is true the card gets the accent border to mark it as focused.
+func renderCard(r upspoll.Row, selected bool) string {
 	const innerWidth = 34
 
 	// lipgloss.Width counts visible cells (skips ANSI codes); len() would
@@ -140,7 +142,11 @@ func renderCard(r upspoll.Row) string {
 		body.WriteString("\n")
 	}
 
-	return cardStyle.Width(innerWidth + 2).Render(body.String())
+	style := cardStyle
+	if selected {
+		style = selectedCardStyle
+	}
+	return style.Width(innerWidth + 2).Render(body.String())
 }
 
 // statusBadge returns the lipgloss-styled, padded status chip for the

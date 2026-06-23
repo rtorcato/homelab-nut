@@ -79,6 +79,11 @@ var (
 			Padding(0, 1).
 			Margin(0, 1, 1, 0)
 
+	// selectedCardStyle is cardStyle with the emerald accent border, used
+	// for the focused card when navigating the Dashboard with ↑↓.
+	selectedCardStyle = cardStyle.
+				BorderForeground(palette.primary)
+
 	hostNameStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(palette.heading)
