@@ -24,7 +24,9 @@ DRY_RUN=0
 [[ "${1:-}" == "--test" ]] && DRY_RUN=1
 
 CONF="/etc/ups-battery-shutdown.conf"
-LOCK_FILE="/run/ups-battery-shutdown.lock"
+# systemd's RuntimeDirectory=ups-battery-shutdown creates /run/ups-battery-shutdown
+# owned by the service user, so the unprivileged daemon can write its lock here.
+LOCK_FILE="/run/ups-battery-shutdown/lock"
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes"
 
 # Defaults (overridden by conf file)
@@ -39,10 +41,11 @@ SSH_KEY=""
 
 [[ -f "$CONF" ]] && source "$CONF"
 
-# Use the daemon's dedicated key when configured. The daemon runs as root,
-# which usually has no default-named key (~/.ssh/id_ed25519 etc.), so without
-# this the SSH below has no identity to offer and auth fails. SSH_OPTS is
-# intentionally word-split in the ssh calls, so SSH_KEY must be path-only.
+# Use the daemon's dedicated key when configured. The daemon runs as the
+# unprivileged 'homelab-nut' service user, whose key lives at
+# /var/lib/homelab-nut/.ssh/id_ed25519_ups; without pointing -i at it the SSH
+# below has no identity to offer and auth fails. SSH_OPTS is intentionally
+# word-split in the ssh calls, so SSH_KEY must be path-only.
 if [[ -n "$SSH_KEY" ]]; then
     SSH_OPTS="-i $SSH_KEY $SSH_OPTS"
 fi

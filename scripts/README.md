@@ -98,8 +98,8 @@ What it locks down:
 |---|---|---|
 | `/root/nut-credentials.txt` | `600` | root-only read |
 | `/etc/nut/upsd.users` + friends | `640` | root-owned, no world read |
-| `/root/.ssh/id_ed25519_ups` | `600` | SSH key, root-only |
-| `/usr/local/bin/ups-battery-shutdown` | `700` | daemon, root-only |
+| `/var/lib/homelab-nut/.ssh/id_ed25519_ups` | `600` | SSH key, owned by `homelab-nut` service user |
+| `/usr/local/bin/ups-battery-shutdown` | `755` | daemon binary (runs as the `homelab-nut` user) |
 | `show-credentials.sh`, `ups-service.sh`, `harden.sh` | `700` | admin-only scripts |
 | `setup-*.sh` | `750` | executable by owner+group, not world |
 

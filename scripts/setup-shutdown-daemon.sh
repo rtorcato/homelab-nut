@@ -14,7 +14,7 @@
 #
 # Optional env vars:
 #   REMOTE_SHUTDOWN_CMD      default: ~/shutdown.sh
-#   LOG_FILE                 default: /var/log/ups-battery-shutdown.log
+#   LOG_FILE                 default: /var/log/ups-battery-shutdown/ups-battery-shutdown.log
 #   SLACK_WEBHOOK            empty = Slack disabled
 #   REMOTE_CMDS_B64          base64 of newline-joined "CMD_<host>=<cmd>" per-target
 #                            command overrides; empty = none (all use the default)
@@ -36,21 +36,34 @@ fi
 : "${REMOTE_NODES:?missing REMOTE_NODES}"
 
 REMOTE_SHUTDOWN_CMD="${REMOTE_SHUTDOWN_CMD:-~/shutdown.sh}"
-LOG_FILE="${LOG_FILE:-/var/log/ups-battery-shutdown.log}"
+LOG_FILE="${LOG_FILE:-/var/log/ups-battery-shutdown/ups-battery-shutdown.log}"
 SLACK_WEBHOOK="${SLACK_WEBHOOK:-}"
+
+# The daemon installs as root (it writes to /usr/local/bin, /etc, and the
+# systemd dir) but runs as this dedicated, login-less system user — a
+# network-egress service should never hold root at runtime.
+DAEMON_USER="homelab-nut"
+DAEMON_HOME="/var/lib/homelab-nut"
 
 DAEMON_DST="/usr/local/bin/ups-battery-shutdown"
 CONF_DST="/etc/ups-battery-shutdown.conf"
 SERVICE_FILE="/etc/systemd/system/ups-battery-shutdown.service"
-SSH_KEY="/root/.ssh/id_ed25519_ups"
+SSH_KEY="${DAEMON_HOME}/.ssh/id_ed25519_ups"
 
 log() { echo "[setup-shutdown-daemon] $*" >&2; }
 
-# 1. Install the daemon binary.
+# 0. Create the dedicated, unprivileged service user if it doesn't exist.
+if ! id -u "$DAEMON_USER" >/dev/null 2>&1; then
+    log "creating system user $DAEMON_USER"
+    useradd --system --home-dir "$DAEMON_HOME" --create-home \
+        --shell /usr/sbin/nologin "$DAEMON_USER"
+fi
+
+# 1. Install the daemon binary (755 so the unprivileged service user can exec it).
 log "installing $DAEMON_DST"
 mkdir -p "$(dirname "$DAEMON_DST")"
 echo "$HOMELAB_NUT_DAEMON_B64" | base64 -d > "$DAEMON_DST"
-chmod 700 "$DAEMON_DST"
+chmod 755 "$DAEMON_DST"
 
 # 2. Write the config (host-specific values from env).
 log "writing $CONF_DST"
@@ -79,15 +92,19 @@ if [[ -n "$REMOTE_CMDS_B64" ]]; then
         printf '%s\n' "$DECODED_CMDS" >> "$CONF_DST"
     fi
 fi
+# Group-readable by the service user so it can source the conf (which may hold
+# SLACK_WEBHOOK), but not world-readable.
+chown "root:${DAEMON_USER}" "$CONF_DST"
 chmod 640 "$CONF_DST"
 
-# 3. Generate the daemon's SSH key if missing.
+# 3. Generate the daemon's SSH key if missing, owned by the service user.
+install -d -m700 -o "$DAEMON_USER" -g "$DAEMON_USER" "$(dirname "$SSH_KEY")"
 if [[ ! -f "$SSH_KEY" ]]; then
     log "generating $SSH_KEY"
-    mkdir -p "$(dirname "$SSH_KEY")"
-    chmod 700 "$(dirname "$SSH_KEY")"
     ssh-keygen -t ed25519 -N '' -C "homelab-nut shutdown-daemon" -f "$SSH_KEY" >/dev/null
 fi
+chown "${DAEMON_USER}:${DAEMON_USER}" "$SSH_KEY" "${SSH_KEY}.pub"
+chmod 600 "$SSH_KEY"
 
 # 4. Install the systemd unit.
 log "writing $SERVICE_FILE"
@@ -99,9 +116,16 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+User=${DAEMON_USER}
+Group=${DAEMON_USER}
 ExecStart=${DAEMON_DST}
 Restart=on-failure
 RestartSec=5s
+# systemd creates these owned by the service user: /run/ups-battery-shutdown
+# (lock file) and /var/log/ups-battery-shutdown (logs).
+RuntimeDirectory=ups-battery-shutdown
+LogsDirectory=ups-battery-shutdown
+NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
@@ -122,5 +146,6 @@ echo "===================================="
 echo
 echo "Add the key above to each shutdown-target's ~/.ssh/authorized_keys"
 echo "for the user the daemon will SSH in as."
+echo "(The daemon runs as the '${DAEMON_USER}' system user; its key lives at ${SSH_KEY}.)"
 
 log "done"
