@@ -76,11 +76,14 @@ type rootModel struct {
 	selectedHost  int
 	apply         applyState
 	dashboard     dashboardState
-	// exitAction is set by 'i' or 'e' keys before tea.Quit, so the
-	// wrapping cobra command can dispatch a follow-up action
-	// (run init forms, open $EDITOR) and then relaunch the TUI.
-	// "" means a normal quit with no follow-up.
-	exitAction    string
+	// exitAction is set by 'i'/'e'/'n'/'d' keys before tea.Quit, so the
+	// wrapping cobra command can dispatch a follow-up action (run init
+	// forms, open $EDITOR, add/edit/delete a host) and then relaunch the
+	// TUI. "" means a normal quit with no follow-up.
+	exitAction string
+	// exitHostIdx is the host the follow-up action targets, for the
+	// "edit-host" / "delete-host" actions. Meaningless otherwise.
+	exitHostIdx   int
 	width, height int
 }
 
@@ -93,6 +96,15 @@ func ExitAction(m tea.Model) string {
 		return rm.exitAction
 	}
 	return ""
+}
+
+// ExitHostIndex returns the host index targeted by an "edit-host" or
+// "delete-host" exit action. Returns 0 for any other model/action.
+func ExitHostIndex(m tea.Model) int {
+	if rm, ok := m.(rootModel); ok {
+		return rm.exitHostIdx
+	}
+	return 0
 }
 
 func (m rootModel) Init() tea.Cmd {
@@ -192,7 +204,15 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "e", "E":
-		// edit needs a file on disk to point $EDITOR at.
+		// Context-aware: on the Hosts list or a host's detail screen, 'e'
+		// edits the selected host through the guided form. Everywhere else
+		// it falls back to opening the whole inventory in $EDITOR.
+		if (m.current == screenHosts || m.current == screenHost) &&
+			m.inv != nil && len(m.inv.Hosts) > 0 {
+			m.exitAction = "edit-host"
+			m.exitHostIdx = m.selectedHost
+			return m, tea.Quit
+		}
 		if m.inventoryPath != "" {
 			m.exitAction = "edit"
 			return m, tea.Quit
@@ -225,6 +245,16 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.inv != nil && len(m.inv.Hosts) > 0 {
 				m.current = screenHost
+			}
+		case "n", "N":
+			// New host — the guided wizard runs after the TUI suspends.
+			m.exitAction = "add-host"
+			return m, tea.Quit
+		case "d", "D":
+			if m.inv != nil && len(m.inv.Hosts) > 0 {
+				m.exitAction = "delete-host"
+				m.exitHostIdx = m.selectedHost
+				return m, tea.Quit
 			}
 		}
 	}
@@ -284,7 +314,10 @@ func (m rootModel) renderTabBar() string {
 func (m rootModel) renderStatusBar() string {
 	hints := []string{"tab cycles", "esc backs out", "? help", "q quits"}
 	if m.current == screenHosts {
-		hints = append([]string{"↑↓ select", "enter drill in"}, hints...)
+		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete"}, hints...)
+	}
+	if m.current == screenHost {
+		hints = append([]string{"e edit"}, hints...)
 	}
 	return statusBarStyle.Render(strings.Join(hints, " · "))
 }
@@ -364,9 +397,11 @@ func (m rootModel) viewHelp() string {
 		{"?", "open this help"},
 		{"↑ ↓ / k j", "select host (Hosts screen)"},
 		{"enter", "drill into selected host"},
+		{"n", "add a new host (Hosts screen)"},
+		{"e", "edit selected host (Hosts/detail) · else $EDITOR"},
+		{"d", "delete selected host (Hosts screen)"},
 		{"r / R", "refresh live UPS state now (Dashboard)"},
 		{"i", "set up inventory (empty-state Dashboard only)"},
-		{"e", "edit inventory in $EDITOR (any screen)"},
 		{"a / A", "run apply (any screen)"},
 		{"o", "open the project page in your browser"},
 		{"esc", "go back one screen"},

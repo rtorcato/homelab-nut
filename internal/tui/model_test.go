@@ -222,6 +222,89 @@ func TestEKeyIgnoredWhenNoInventoryPath(t *testing.T) {
 	}
 }
 
+func TestNKeyOnHostsScreenSetsAddHostAction(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.current = screenHosts
+	newModel, cmd := tea.Model(m).Update(key("n"))
+	rm := newModel.(rootModel)
+	if rm.exitAction != "add-host" {
+		t.Errorf("'n' on Hosts: exitAction = %q, want add-host", rm.exitAction)
+	}
+	if cmd == nil {
+		t.Error("'n' on Hosts should return tea.Quit")
+	}
+}
+
+func TestNKeyIgnoredOffHostsScreen(t *testing.T) {
+	m := modelWithInventory(fixtureInventory()) // current == Dashboard
+	newModel, _ := tea.Model(m).Update(key("n"))
+	if got := newModel.(rootModel).exitAction; got != "" {
+		t.Errorf("'n' off the Hosts screen should be ignored, exitAction = %q", got)
+	}
+}
+
+func TestEKeyOnHostsScreenEditsSelectedHost(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.inventoryPath = "homelab-nut.yaml"
+	m.current = screenHosts
+	m.selectedHost = 1
+	newModel, cmd := tea.Model(m).Update(key("e"))
+	rm := newModel.(rootModel)
+	if rm.exitAction != "edit-host" {
+		t.Errorf("'e' on Hosts: exitAction = %q, want edit-host", rm.exitAction)
+	}
+	if rm.exitHostIdx != 1 {
+		t.Errorf("'e' on Hosts: exitHostIdx = %d, want 1", rm.exitHostIdx)
+	}
+	if cmd == nil {
+		t.Error("'e' on Hosts should return tea.Quit")
+	}
+	if got := ExitHostIndex(rm); got != 1 {
+		t.Errorf("ExitHostIndex() = %d, want 1", got)
+	}
+}
+
+func TestEKeyOnDashboardStillOpensEditor(t *testing.T) {
+	m := modelWithInventory(fixtureInventory()) // current == Dashboard
+	m.inventoryPath = "homelab-nut.yaml"
+	newModel, _ := tea.Model(m).Update(key("e"))
+	if got := newModel.(rootModel).exitAction; got != "edit" {
+		t.Errorf("'e' on Dashboard: exitAction = %q, want edit", got)
+	}
+}
+
+func TestDKeyOnHostsScreenSetsDeleteHostAction(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.current = screenHosts
+	m.selectedHost = 1
+	newModel, cmd := tea.Model(m).Update(key("d"))
+	rm := newModel.(rootModel)
+	if rm.exitAction != "delete-host" {
+		t.Errorf("'d' on Hosts: exitAction = %q, want delete-host", rm.exitAction)
+	}
+	if rm.exitHostIdx != 1 {
+		t.Errorf("'d' on Hosts: exitHostIdx = %d, want 1", rm.exitHostIdx)
+	}
+	if cmd == nil {
+		t.Error("'d' on Hosts should return tea.Quit")
+	}
+}
+
+func TestDKeyIgnoredOffHostsScreen(t *testing.T) {
+	m := modelWithInventory(fixtureInventory()) // current == Dashboard
+	newModel, _ := tea.Model(m).Update(key("d"))
+	if got := newModel.(rootModel).exitAction; got != "" {
+		t.Errorf("'d' off the Hosts screen should be ignored, exitAction = %q", got)
+	}
+}
+
+func TestExitHostIndexHelper_NilSafe(t *testing.T) {
+	var notMe tea.Model
+	if got := ExitHostIndex(notMe); got != 0 {
+		t.Errorf("ExitHostIndex(nil) = %d, want 0", got)
+	}
+}
+
 func TestExitActionHelper_NilSafe(t *testing.T) {
 	// ExitAction on a non-rootModel returns "" without panic.
 	var notMe tea.Model
