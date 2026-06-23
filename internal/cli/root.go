@@ -89,6 +89,8 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 		if err != nil {
 			return err
 		}
+		// Host-editing failures (and $EDITOR failures) shouldn't kill the
+		// TUI loop — show the error and relaunch so the user can retry.
 		switch tui.ExitAction(finalModel) {
 		case "init":
 			if err := runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path); err != nil {
@@ -96,9 +98,19 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 			}
 		case "edit":
 			if err := openEditor(path); err != nil {
-				// Edit failures shouldn't kill the TUI loop — show the
-				// error and relaunch so the user can try again.
 				fmt.Fprintf(cmd.ErrOrStderr(), "edit failed: %v\n", err)
+			}
+		case "add-host":
+			if err := runAddHost(path); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "add host failed: %v\n", err)
+			}
+		case "edit-host":
+			if err := runEditHost(path, tui.ExitHostIndex(finalModel)); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "edit host failed: %v\n", err)
+			}
+		case "delete-host":
+			if err := runDeleteHost(path, tui.ExitHostIndex(finalModel)); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "delete host failed: %v\n", err)
 			}
 		default:
 			return nil
