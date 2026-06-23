@@ -81,13 +81,7 @@ func hostForm(title string, host *inventory.Host, roleStrings *[]string) *huh.Fo
 			huh.NewMultiSelect[string]().
 				Title("Roles").
 				Description("What this host does. Pick at least one.").
-				Options(huh.NewOptions(
-					string(inventory.RoleNUTServer),
-					string(inventory.RoleNUTClient),
-					string(inventory.RoleExporter),
-					string(inventory.RoleShutdownDaemon),
-					string(inventory.RoleShutdownTarget),
-				)...).
+				Options(roleOptions()...).
 				Validate(func(v []string) error {
 					if len(v) == 0 {
 						return errors.New("at least one role is required")
@@ -97,6 +91,37 @@ func hostForm(title string, host *inventory.Host, roleStrings *[]string) *huh.Fo
 				Value(roleStrings),
 		),
 	)
+}
+
+// roleDescriptions is the one-line "what does this role do" blurb shown
+// beside each option in the Roles multiselect. Keyed by role so the
+// option label and stored value can't drift.
+var roleDescriptions = map[inventory.Role]string{
+	inventory.RoleNUTServer:      "owns the UPS; serves status over the network",
+	inventory.RoleNUTClient:      "monitors the server's UPS; shuts itself down",
+	inventory.RoleExporter:       "exposes Prometheus metrics for the UPS",
+	inventory.RoleShutdownDaemon: "watches battery %; SSHes shutdowns to targets",
+	inventory.RoleShutdownTarget: "gets shut down remotely when battery is low",
+}
+
+// roleOptions builds the Roles multiselect options with an aligned
+// description beside each role. The option's value stays the bare role
+// string (e.g. "nut-server") so the inventory schema is unchanged — only
+// the displayed label carries the description.
+func roleOptions() []huh.Option[string] {
+	// Width the role column to the longest name so the "— desc" parts align.
+	w := 0
+	for _, r := range inventory.AllRoles {
+		if n := len(r.String()); n > w {
+			w = n
+		}
+	}
+	opts := make([]huh.Option[string], 0, len(inventory.AllRoles))
+	for _, r := range inventory.AllRoles {
+		label := fmt.Sprintf("%-*s  — %s", w, r.String(), roleDescriptions[r])
+		opts = append(opts, huh.NewOption(label, string(r)))
+	}
+	return opts
 }
 
 // collectRoleDetails finalizes a host after the identity/roles step: it

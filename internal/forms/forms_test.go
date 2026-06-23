@@ -3,7 +3,39 @@ package forms
 import (
 	"strings"
 	"testing"
+
+	"github.com/rtorcato/homelab-nut/internal/inventory"
 )
+
+func TestRoleOptionsLabelsAndValues(t *testing.T) {
+	opts := roleOptions()
+	if len(opts) != len(inventory.AllRoles) {
+		t.Fatalf("roleOptions() = %d options, want %d", len(opts), len(inventory.AllRoles))
+	}
+	for i, r := range inventory.AllRoles {
+		o := opts[i]
+		// Value must stay the bare role string so the inventory schema is
+		// unchanged.
+		if o.Value != string(r) {
+			t.Errorf("option %d value = %q, want %q", i, o.Value, string(r))
+		}
+		// Label must carry both the role name and its description.
+		if !strings.Contains(o.Key, r.String()) {
+			t.Errorf("option %d label %q missing role name %q", i, o.Key, r.String())
+		}
+		if desc := roleDescriptions[r]; desc != "" && !strings.Contains(o.Key, desc) {
+			t.Errorf("option %d label %q missing description %q", i, o.Key, desc)
+		}
+	}
+}
+
+func TestRoleDescriptionsCoverAllRoles(t *testing.T) {
+	for _, r := range inventory.AllRoles {
+		if strings.TrimSpace(roleDescriptions[r]) == "" {
+			t.Errorf("role %q has no description", r)
+		}
+	}
+}
 
 func TestRequireNonEmpty(t *testing.T) {
 	v := RequireNonEmpty("name")
