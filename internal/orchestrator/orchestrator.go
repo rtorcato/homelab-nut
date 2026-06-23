@@ -30,6 +30,15 @@ var roleOrder = []inventory.Role{
 	inventory.RoleShutdownTarget,
 }
 
+// RoleOrder returns the per-host execution order Apply uses, as a copy.
+// Exposed so UIs can preview the roles a host will run in the same order
+// Apply actually runs them.
+func RoleOrder() []inventory.Role {
+	out := make([]inventory.Role, len(roleOrder))
+	copy(out, roleOrder)
+	return out
+}
+
 // Options tunes the orchestrator's behaviour.
 type Options struct {
 	// MaxConcurrency caps how many hosts the orchestrator works on
