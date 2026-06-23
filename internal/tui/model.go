@@ -74,8 +74,13 @@ type rootModel struct {
 	loadErr       error
 	current       screen
 	selectedHost  int
-	apply         applyState
-	dashboard     dashboardState
+	// dashSelected indexes the focused Dashboard card within
+	// dashboard.rows (nut-server hosts only — a subset of inv.Hosts).
+	// Moving it keeps selectedHost in sync so focus carries between the
+	// Dashboard and Hosts tabs.
+	dashSelected int
+	apply        applyState
+	dashboard    dashboardState
 	// exitAction is set by 'i'/'e'/'n'/'d' keys before tea.Quit, so the
 	// wrapping cobra command can dispatch a follow-up action (run init
 	// forms, open $EDITOR, add/edit/delete a host) and then relaunch the
@@ -150,6 +155,10 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.dashboard.rows = msg.rows
 		m.dashboard.updated = msg.at
 		m.dashboard.inFlight = false
+		// Keep the card cursor in range as the row set changes.
+		if m.dashSelected >= len(m.dashboard.rows) {
+			m.dashSelected = max(0, len(m.dashboard.rows)-1)
+		}
 		return m, nil
 	}
 	return m, nil
@@ -232,6 +241,24 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Screen-local navigation.
 	switch m.current {
+	case screenDashboard:
+		switch msg.String() {
+		case "up", "k":
+			if m.dashSelected > 0 {
+				m.dashSelected--
+				m.syncSelectionFromCard()
+			}
+		case "down", "j":
+			if m.dashSelected < len(m.dashboard.rows)-1 {
+				m.dashSelected++
+				m.syncSelectionFromCard()
+			}
+		case "enter":
+			// Drill into the focused card's host detail.
+			if m.syncSelectionFromCard() {
+				m.current = screenHost
+			}
+		}
 	case screenHosts:
 		switch msg.String() {
 		case "up", "k":
@@ -259,6 +286,25 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// syncSelectionFromCard points selectedHost at the inventory host behind
+// the focused Dashboard card, so focus carries over to the Hosts tab and
+// the host-detail screen. Dashboard rows are nut-server hosts only (a
+// subset of inv.Hosts), so we map by name. Returns false when there's no
+// resolvable host (empty rows or a name that's no longer in inventory).
+func (m *rootModel) syncSelectionFromCard() bool {
+	if m.inv == nil || m.dashSelected < 0 || m.dashSelected >= len(m.dashboard.rows) {
+		return false
+	}
+	name := m.dashboard.rows[m.dashSelected].Host
+	for i := range m.inv.Hosts {
+		if m.inv.Hosts[i].Name == name {
+			m.selectedHost = i
+			return true
+		}
+	}
+	return false
 }
 
 // cycle returns the next screen in tabOrder. dir is +1 or -1.
@@ -313,6 +359,9 @@ func (m rootModel) renderTabBar() string {
 
 func (m rootModel) renderStatusBar() string {
 	hints := []string{"tab cycles", "esc backs out", "? help", "q quits"}
+	if m.current == screenDashboard && len(m.dashboard.rows) > 0 {
+		hints = append([]string{"↑↓ select", "enter drill in"}, hints...)
+	}
 	if m.current == screenHosts {
 		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete"}, hints...)
 	}
@@ -336,7 +385,7 @@ func (m rootModel) viewDashboard() string {
 	fmt.Fprintf(&b, "%s %d host(s) at %s\n\n",
 		titleStyle.Render("Inventory:"), len(m.inv.Hosts), m.inventoryPath)
 
-	b.WriteString(renderDashboardCards(m.dashboard.rows, width))
+	b.WriteString(renderDashboardCards(m.dashboard.rows, width, m.dashSelected))
 	b.WriteString("\n")
 	b.WriteString(dashboardFooter(m.dashboard.rows, m.dashboard.updated))
 
@@ -395,7 +444,7 @@ func (m rootModel) viewHelp() string {
 		{"tab / shift+tab", "cycle screens"},
 		{"1 / 2 / 3 / 4", "jump to Dashboard / Hosts / Apply / Help"},
 		{"?", "open this help"},
-		{"↑ ↓ / k j", "select host (Hosts screen)"},
+		{"↑ ↓ / k j", "select host (Hosts + Dashboard)"},
 		{"enter", "drill into selected host"},
 		{"n", "add a new host (Hosts screen)"},
 		{"e", "edit selected host (Hosts/detail) · else $EDITOR"},
