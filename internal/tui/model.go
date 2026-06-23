@@ -368,6 +368,9 @@ func (m rootModel) renderStatusBar() string {
 	if m.current == screenHost {
 		hints = append([]string{"e edit"}, hints...)
 	}
+	if m.current == screenApply && m.apply.status != applyRunning {
+		hints = append([]string{"a apply"}, hints...)
+	}
 	return statusBarStyle.Render(strings.Join(hints, " · "))
 }
 

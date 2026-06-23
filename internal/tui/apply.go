@@ -90,14 +90,7 @@ func (m rootModel) viewApply() string {
 
 	switch m.apply.status {
 	case applyIdle:
-		fmt.Fprintln(&b, titleStyle.Render("Ready to apply"))
-		fmt.Fprintln(&b)
-		fmt.Fprintf(&b, "%d host(s) in inventory:\n", len(m.inv.Hosts))
-		for _, h := range m.inv.Hosts {
-			fmt.Fprintf(&b, "  %s · %s\n", h.Name, summariseHostRoles(&h))
-		}
-		fmt.Fprintln(&b)
-		fmt.Fprintln(&b, hintStyle.Render("press 'a' to start apply — runs the same orchestrator as `homelab-nut apply`"))
+		writeApplyPlan(&b, m.inv)
 
 	case applyRunning:
 		spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}[int(time.Since(m.apply.startedAt).Milliseconds()/100)%10]
@@ -123,12 +116,71 @@ func (m rootModel) viewApply() string {
 	return bodyStyle.Render(b.String())
 }
 
-func summariseHostRoles(h *inventory.Host) string {
-	parts := make([]string, len(h.Roles))
-	for i, r := range h.Roles {
-		parts[i] = r.String()
+// writeApplyPlan renders the idle-state preview: per host, the roles that
+// will run (in Apply's execution order) and a one-line description of what
+// each does. It's a static, no-SSH plan — enough to answer "what will this
+// do?" before the user commits. The live Detect-based "will change vs.
+// already configured" split is a deliberate follow-up (would need SSH on
+// the idle screen); see #78.
+func writeApplyPlan(b *strings.Builder, inv *inventory.Inventory) {
+	fmt.Fprintln(b, titleStyle.Render("Apply — set up NUT across your fleet"))
+	fmt.Fprintln(b)
+	fmt.Fprintln(b, "Connects to each host over SSH and runs its role scripts.")
+	fmt.Fprintln(b, hintStyle.Render("Idempotent — safe to re-run; already-configured hosts converge with no harm."))
+	fmt.Fprintln(b)
+
+	order := orchestrator.RoleOrder()
+	for i := range inv.Hosts {
+		h := &inv.Hosts[i]
+		fmt.Fprintf(b, "%s %s\n",
+			hostNameStyle.Render(h.Name),
+			hintStyle.Render(fmt.Sprintf("%s · %s", h.Address, h.User)))
+
+		step := 0
+		for _, r := range order {
+			if !h.HasRole(r) {
+				continue
+			}
+			step++
+			fmt.Fprintf(b, "  %d. %-16s %s\n",
+				step, r.String(), hintStyle.Render(roleActionLine(r, h, inv)))
+		}
+		if step == 0 {
+			fmt.Fprintln(b, hintStyle.Render("  (no roles — nothing to apply)"))
+		}
 	}
-	return strings.Join(parts, ", ")
+
+	fmt.Fprintln(b)
+	fmt.Fprintln(b, hintStyle.Render("press 'a' to apply · runs the same orchestrator as `homelab-nut apply`"))
+}
+
+// roleActionLine is a short, inventory-aware description of what applying
+// a role does on a host. Wording mirrors the roles' own Plan actions.
+func roleActionLine(r inventory.Role, h *inventory.Host, inv *inventory.Inventory) string {
+	switch r {
+	case inventory.RoleNUTServer:
+		if h.UPS != nil && h.UPS.Name != "" {
+			return fmt.Sprintf("install NUT, configure UPS %q, start upsd + upsmon", h.UPS.Name)
+		}
+		return "install NUT, write configs, start upsd + upsmon"
+	case inventory.RoleNUTClient:
+		return "install nut-client + upsmon, point it at the NUT server"
+	case inventory.RoleExporter:
+		return "install the Prometheus NUT exporter (systemd service)"
+	case inventory.RoleShutdownDaemon:
+		if d := inv.ShutdownDaemon; d != nil {
+			return fmt.Sprintf("install battery-watch daemon (threshold %d%%, poll %ds)", d.Threshold, d.PollInterval)
+		}
+		return "install the battery-watch shutdown daemon"
+	case inventory.RoleShutdownTarget:
+		cmd := "~/shutdown.sh"
+		if h.Shutdown != nil && h.Shutdown.Command != "" {
+			cmd = h.Shutdown.Command
+		}
+		return fmt.Sprintf("register graceful-shutdown command (%s)", cmd)
+	default:
+		return ""
+	}
 }
 
 func writeApplySummary(b *strings.Builder, res *orchestrator.Result, elapsed time.Duration) {

@@ -30,6 +30,23 @@ func TestRoleOrderHasAllRoles(t *testing.T) {
 	}
 }
 
+func TestRoleOrderExportedIsCopyOfInternal(t *testing.T) {
+	got := RoleOrder()
+	if len(got) != len(roleOrder) {
+		t.Fatalf("RoleOrder() length = %d, want %d", len(got), len(roleOrder))
+	}
+	for i := range roleOrder {
+		if got[i] != roleOrder[i] {
+			t.Errorf("RoleOrder()[%d] = %s, want %s", i, got[i], roleOrder[i])
+		}
+	}
+	// Mutating the returned slice must not affect the internal order.
+	got[0] = inventory.Role("tampered")
+	if roleOrder[0] == inventory.Role("tampered") {
+		t.Error("RoleOrder() leaked the internal slice — mutation bled through")
+	}
+}
+
 func TestRoleOrderServerBeforeClient(t *testing.T) {
 	// Per ROADMAP: nut-server is the dependency for nut-client + exporter.
 	// Belt-and-braces test so a future shuffle doesn't break apply order.
