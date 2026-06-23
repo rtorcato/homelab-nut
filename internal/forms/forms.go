@@ -80,7 +80,8 @@ func hostForm(title string, host *inventory.Host, roleStrings *[]string) *huh.Fo
 				Value(&host.User),
 			huh.NewMultiSelect[string]().
 				Title("Roles").
-				Description("What this host does. Pick at least one.").
+				Description("What this host does — a host can have several. "+
+					"Space toggles, enter confirms. Pick at least one.").
 				Options(roleOptions()...).
 				Validate(func(v []string) error {
 					if len(v) == 0 {
