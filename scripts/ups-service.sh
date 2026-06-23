@@ -36,7 +36,13 @@ DAEMON_SRC="$(dirname "$0")/services/battery-shutdown.sh"
 DAEMON_DST="/usr/local/bin/ups-battery-shutdown"
 SERVICE_FILE="/etc/systemd/system/ups-battery-shutdown.service"
 SERVICE="ups-battery-shutdown.service"
-SSH_KEY="/root/.ssh/id_ed25519_ups"
+# Canonical key location, shared with the homelab-nut role (setup-shutdown-daemon.sh).
+# NOTE: this legacy interactive installer still runs the daemon as root (its conf
+# and logs live in the repo checkout); the role path runs the daemon as the
+# unprivileged 'homelab-nut' user. The key lives in one place either way.
+DAEMON_USER="homelab-nut"
+DAEMON_HOME="/var/lib/homelab-nut"
+SSH_KEY="${DAEMON_HOME}/.ssh/id_ed25519_ups"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -180,13 +186,20 @@ run_setup() {
 
     # ── SSH key ────────────────────────────────────────────────────────────────
     info "Checking SSH key..."
-    mkdir -p /root/.ssh && chmod 700 /root/.ssh
+    if ! id -u "$DAEMON_USER" >/dev/null 2>&1; then
+        useradd --system --home-dir "$DAEMON_HOME" --create-home \
+            --shell /usr/sbin/nologin "$DAEMON_USER"
+        ok "Created system user $DAEMON_USER"
+    fi
+    install -d -m700 -o "$DAEMON_USER" -g "$DAEMON_USER" "$(dirname "$SSH_KEY")"
     if [[ ! -f "$SSH_KEY" ]]; then
         ssh-keygen -t ed25519 -f "$SSH_KEY" -N "" -C "ups-battery-shutdown@$(hostname)"
         ok "Generated $SSH_KEY"
     else
         ok "SSH key already exists: $SSH_KEY"
     fi
+    chown "${DAEMON_USER}:${DAEMON_USER}" "$SSH_KEY" "${SSH_KEY}.pub"
+    chmod 600 "$SSH_KEY"
 
     # ── Copy key to each node ──────────────────────────────────────────────────
     for NODE in $REMOTE_NODES; do

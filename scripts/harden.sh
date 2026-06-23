@@ -65,12 +65,12 @@ check_or_set "ups-battery-shutdown.conf" /etc/ups-battery-shutdown.conf 640 root
 
 echo
 echo -e "${CYAN}─ SSH key (UPS) ─${NC}"
-check_or_set "id_ed25519_ups"        /root/.ssh/id_ed25519_ups       600 root
-check_or_set "id_ed25519_ups.pub"    /root/.ssh/id_ed25519_ups.pub   644 root
+check_or_set "id_ed25519_ups"        /var/lib/homelab-nut/.ssh/id_ed25519_ups     600 homelab-nut
+check_or_set "id_ed25519_ups.pub"    /var/lib/homelab-nut/.ssh/id_ed25519_ups.pub 644 homelab-nut
 
 echo
 echo -e "${CYAN}─ Installed daemon ─${NC}"
-check_or_set "ups-battery-shutdown"  /usr/local/bin/ups-battery-shutdown 700 root
+check_or_set "ups-battery-shutdown"  /usr/local/bin/ups-battery-shutdown 755 root
 
 echo
 echo -e "${CYAN}─ Repo scripts ─${NC}"

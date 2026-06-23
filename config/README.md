@@ -34,7 +34,7 @@ sudo ./scripts/ups-service.sh edit
 | `THRESHOLD` | `50` | Battery % at which remote shutdown triggers (on battery only) |
 | `REMOTE_NODES` | `"user@host1 admin@unifi"` | Space-separated list of `user@host` targets to SSH into |
 | `POLL_INTERVAL` | `30` | How often (seconds) the daemon checks the UPS |
-| `SSH_KEY` | `/root/.ssh/id_ed25519_ups` | Private key used for passwordless SSH to remote nodes |
+| `SSH_KEY` | `/var/lib/homelab-nut/.ssh/id_ed25519_ups` | Private key used for passwordless SSH to remote nodes (owned by the `homelab-nut` service user) |
 | `REMOTE_SHUTDOWN_CMD` | `~/shutdown.sh` | Default command run on each remote node when shutdown is triggered |
 | `CMD_<hostname>` | `CMD_dream_machine=poweroff` | Per-node command override (hyphens and dots in hostname → underscores) |
 | `LOG_FILE` | `/home/user/homelab-nut/logs/ups-battery-shutdown.log` | Optional log file path (date-stamped automatically) |
@@ -57,6 +57,6 @@ The daemon detects whether the command is a script path (`~/...` or `*.sh`) or a
 - **Script path** → wrapped in `nohup bash -c '...' &` so SSH exits before the machine goes down
 - **Inline command** → sent directly via SSH (UniFi's `poweroff` returns fast enough)
 
-**UniFi SSH key setup** — cannot use `ssh-copy-id` on UniFi devices. Add the Pi's public key (`/root/.ssh/id_ed25519_ups.pub`) via:
+**UniFi SSH key setup** — cannot use `ssh-copy-id` on UniFi devices. Add the Pi's public key (`/var/lib/homelab-nut/.ssh/id_ed25519_ups.pub`) via:
 
 > UniFi Network App → Settings → System → Administration → SSH Keys

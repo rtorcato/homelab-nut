@@ -158,7 +158,7 @@ func (r shutdownDaemon) Plan(ctx context.Context, conn *ssh.Connection, h *inven
 	d.Actions = []string{
 		"install /usr/local/bin/ups-battery-shutdown (chmod 700)",
 		fmt.Sprintf("write /etc/ups-battery-shutdown.conf (UPS=%s, threshold=%d%%, poll=%ds)", upsRefFromInventory(h), threshold, pollInterval),
-		"generate /root/.ssh/id_ed25519_ups if missing",
+		"create homelab-nut system user + generate /var/lib/homelab-nut/.ssh/id_ed25519_ups if missing",
 		"install + enable + restart ups-battery-shutdown.service",
 		fmt.Sprintf("targets: %s", remoteNodes),
 	}

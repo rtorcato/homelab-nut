@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SHUTDOWN_SCRIPT="${SCRIPT_DIR}/shutdown.sh"
 
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
-SSH_KEY="/root/.ssh/id_ed25519_ups"
+SSH_KEY="/var/lib/homelab-nut/.ssh/id_ed25519_ups"
 [[ -f "$SSH_KEY" ]] && SSH_OPTS="$SSH_OPTS -i $SSH_KEY"
 
 [[ $# -eq 0 ]] && { echo "Usage: $0 user@host [user@host ...]" >&2; exit 1; }
