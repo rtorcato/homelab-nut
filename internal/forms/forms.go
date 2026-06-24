@@ -54,21 +54,23 @@ type DriverDetector func(host *inventory.Host) (driver string, ok bool)
 // roles plus the conditional UPS and shutdown sub-forms when those roles
 // are selected. index is the 1-based human-friendly host number shown in
 // the form title. detect (optional) pre-fills the UPS driver via a scan.
-func AskHost(index int, detect DriverDetector) (*inventory.Host, error) {
+// daemonDefault (optional) seeds the per-host shutdown-daemon form with the
+// fleet-wide default when this host has no override yet.
+func AskHost(index int, detect DriverDetector, daemonDefault *inventory.ShutdownDaemon) (*inventory.Host, error) {
 	host := &inventory.Host{}
 	roleStrings := []string{}
 
 	if err := hostForm(fmt.Sprintf("Host #%d", index), host, &roleStrings).Run(); err != nil {
 		return nil, err
 	}
-	return collectRoleDetails(host, roleStrings, detect)
+	return collectRoleDetails(host, roleStrings, detect, daemonDefault)
 }
 
 // EditHost runs the same guided wizard as AskHost, but seeded with an
 // existing host's values so the user edits in place. The returned host is
 // a fresh value safe to assign back into the inventory slice; UPS and
 // shutdown config is dropped when the corresponding role is unchecked.
-func EditHost(existing *inventory.Host, detect DriverDetector) (*inventory.Host, error) {
+func EditHost(existing *inventory.Host, detect DriverDetector, daemonDefault *inventory.ShutdownDaemon) (*inventory.Host, error) {
 	host := *existing // value copy — UPS/Shutdown pointers reseeded below
 	roleStrings := make([]string, len(existing.Roles))
 	for i, r := range existing.Roles {
@@ -78,7 +80,7 @@ func EditHost(existing *inventory.Host, detect DriverDetector) (*inventory.Host,
 	if err := hostForm("Edit host: "+existing.Name, &host, &roleStrings).Run(); err != nil {
 		return nil, err
 	}
-	return collectRoleDetails(&host, roleStrings, detect)
+	return collectRoleDetails(&host, roleStrings, detect, daemonDefault)
 }
 
 // hostForm builds the first wizard step (identity + roles) bound to the
@@ -156,7 +158,7 @@ func roleOptions() []huh.Option[string] {
 // converts the selected role strings, then runs the conditional UPS and
 // shutdown sub-forms. Pre-existing UPS/shutdown values seed those forms
 // (so editing keeps them); deselecting a role clears its config.
-func collectRoleDetails(host *inventory.Host, roleStrings []string, detect DriverDetector) (*inventory.Host, error) {
+func collectRoleDetails(host *inventory.Host, roleStrings []string, detect DriverDetector, daemonDefault *inventory.ShutdownDaemon) (*inventory.Host, error) {
 	host.Roles = make([]inventory.Role, len(roleStrings))
 	for i, r := range roleStrings {
 		host.Roles[i] = inventory.Role(r)
@@ -236,20 +238,43 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string, detect Drive
 		host.Shutdown = nil
 	}
 
+	if host.HasRole(inventory.RoleShutdownDaemon) {
+		// Seed from this host's existing override, else the fleet-wide
+		// default, else the built-in 50%/30s. Copy so the form never mutates
+		// the shared global default in place.
+		sd := host.ShutdownDaemon
+		switch {
+		case sd != nil:
+			// edit in place
+		case daemonDefault != nil:
+			cp := *daemonDefault
+			sd = &cp
+		default:
+			sd = &inventory.ShutdownDaemon{Threshold: 50, PollInterval: 30}
+		}
+		if err := runDaemonForm(fmt.Sprintf("Shutdown daemon on %s", host.Name), sd); err != nil {
+			return nil, err
+		}
+		host.ShutdownDaemon = sd
+	} else {
+		host.ShutdownDaemon = nil
+	}
+
 	return host, nil
 }
 
-// AskShutdownDaemon runs the global daemon-config form.
-func AskShutdownDaemon() (*inventory.ShutdownDaemon, error) {
-	d := &inventory.ShutdownDaemon{Threshold: 50, PollInterval: 30}
+// runDaemonForm runs the battery-watch daemon config form bound to d,
+// mutating it in place. Shared by the per-host shutdown-daemon wizard step
+// (collectRoleDetails); the title names the host the daemon runs on.
+func runDaemonForm(title string, d *inventory.ShutdownDaemon) error {
 	thresholdStr := strconv.Itoa(d.Threshold)
 	pollStr := strconv.Itoa(d.PollInterval)
 
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
-				Title("Shutdown daemon — global config").
-				Description(cancelHint),
+				Title(title).
+				Description("Battery-watch tuning for this host's daemon. "+cancelHint),
 			huh.NewInput().
 				Title("Battery threshold (%)").
 				Description("Trigger shutdown when battery drops below this on battery.").
@@ -268,11 +293,11 @@ func AskShutdownDaemon() (*inventory.ShutdownDaemon, error) {
 		),
 	).WithKeyMap(cancelKeyMap())
 	if err := form.Run(); err != nil {
-		return nil, err
+		return err
 	}
 	d.Threshold, _ = strconv.Atoi(thresholdStr)
 	d.PollInterval, _ = strconv.Atoi(pollStr)
-	return d, nil
+	return nil
 }
 
 // ConfirmOverwrite is the y/N prompt shown when init would clobber an

@@ -86,7 +86,7 @@ func TestIntMin(t *testing.T) {
 	}
 }
 
-// Note: the AskHost / AskShutdownDaemon / ConfirmXxx functions invoke
+// Note: the AskHost / EditHost / ConfirmXxx functions invoke
 // huh.Form.Run() which requires an interactive terminal. They're not
 // unit-tested here — coverage comes from end-to-end smoke tests of
 // `homelab-nut init` and the TUI init flow.

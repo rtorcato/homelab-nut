@@ -110,6 +110,54 @@ func TestValidate_OrphanShutdownDaemon(t *testing.T) {
 	}
 }
 
+func TestValidate_PerHostShutdownDaemonRange(t *testing.T) {
+	inv := &Inventory{
+		Hosts: []Host{{
+			Name: "a", Address: "192.0.2.1", User: "u",
+			Roles:          []Role{RoleShutdownDaemon},
+			ShutdownDaemon: &ShutdownDaemon{Threshold: 150, PollInterval: -1},
+		}},
+	}
+	err := inv.Validate()
+	_ = pickFirstIssue(t, err, "hosts[0].shutdown_daemon.threshold")
+	_ = pickFirstIssue(t, err, "hosts[0].shutdown_daemon.poll_interval")
+}
+
+func TestValidate_PerHostShutdownDaemonWithoutRole(t *testing.T) {
+	inv := &Inventory{
+		Hosts: []Host{{
+			Name: "a", Address: "192.0.2.1", User: "u",
+			Roles:          []Role{RoleNUTClient},
+			ShutdownDaemon: &ShutdownDaemon{Threshold: 40, PollInterval: 20},
+		}},
+	}
+	err := inv.Validate()
+	iss := pickFirstIssue(t, err, "hosts[0].shutdown_daemon")
+	if !strings.Contains(iss.Message, "lacks role 'shutdown-daemon'") {
+		t.Errorf("message = %q", iss.Message)
+	}
+}
+
+func TestValidate_AcceptsPerHostShutdownDaemon(t *testing.T) {
+	inv := &Inventory{
+		Hosts: []Host{
+			{
+				Name: "pi", Address: "192.0.2.1", User: "pi",
+				Roles:          []Role{RoleShutdownDaemon},
+				ShutdownDaemon: &ShutdownDaemon{Threshold: 40, PollInterval: 20},
+			},
+			{
+				Name: "ws", Address: "192.0.2.2", User: "u",
+				Roles:    []Role{RoleShutdownTarget},
+				Shutdown: &Shutdown{Command: "poweroff"},
+			},
+		},
+	}
+	if err := inv.Validate(); err != nil {
+		t.Fatalf("per-host daemon override should validate, got: %v", err)
+	}
+}
+
 func TestValidate_AcceptsExampleInventory(t *testing.T) {
 	// The same example.yaml we ship in examples/ should validate cleanly.
 	yml := `
@@ -119,6 +167,7 @@ hosts:
     user: pi
     roles: [nut-server, exporter, shutdown-daemon]
     ups: { name: myups, driver: usbhid-ups }
+    shutdown_daemon: { threshold: 50, poll_interval: 30, slack_webhook_env: SLACK_WEBHOOK }
   - name: workstation
     address: 192.0.2.20
     user: admin

@@ -390,10 +390,14 @@ func (m rootModel) viewDashboard() string {
 	b.WriteString("\n")
 	b.WriteString(dashboardFooter(m.dashboard.rows, m.dashboard.updated))
 
-	if m.inv.ShutdownDaemon != nil {
-		d := m.inv.ShutdownDaemon
-		fmt.Fprintf(&b, "\n\n%s threshold=%d%%  poll=%ds",
-			titleStyle.Render("Daemon:"), d.Threshold, d.PollInterval)
+	// One line per shutdown-daemon host, showing its effective tuning
+	// (per-host override → fleet default). Hosts running on the built-in
+	// 50%/30s fallback (no explicit config anywhere) are omitted.
+	for _, dh := range m.inv.HostsWithRole(inventory.RoleShutdownDaemon) {
+		if d := m.inv.EffectiveShutdownDaemon(dh); d != nil {
+			fmt.Fprintf(&b, "\n\n%s %s — threshold=%d%%  poll=%ds",
+				titleStyle.Render("Daemon:"), dh.Name, d.Threshold, d.PollInterval)
+		}
 	}
 	return bodyStyle.Render(b.String())
 }

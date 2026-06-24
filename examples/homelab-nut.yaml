@@ -23,6 +23,14 @@ hosts:
     ups:
       name: myups
       driver: usbhid-ups
+    # Battery-watch tuning for this host's daemon. Per-host, because each
+    # shutdown-daemon host watches its own UPS. Omit to inherit the fleet-wide
+    # `shutdown_daemon:` default below (or the built-in 50% / 30s).
+    shutdown_daemon:
+      threshold: 50
+      poll_interval: 30
+      # Set SLACK_WEBHOOK in the daemon's environment to enable notifications.
+      slack_webhook_env: SLACK_WEBHOOK
 
   - name: workstation
     address: 192.0.2.20
@@ -41,8 +49,9 @@ hosts:
     shutdown:
       command: poweroff
 
+# Optional fleet-wide default for any shutdown-daemon host that doesn't set
+# its own `shutdown_daemon:` block above. A per-host block always wins.
 shutdown_daemon:
   threshold: 50
   poll_interval: 30
-  # Set SLACK_WEBHOOK in the daemon's environment to enable notifications.
   slack_webhook_env: SLACK_WEBHOOK

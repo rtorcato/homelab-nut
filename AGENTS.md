@@ -309,13 +309,17 @@ hosts:
     ups:                         # required when host has role `nut-server`
       name: myups
       driver: usbhid-ups
+    shutdown_daemon:             # per-host daemon tuning (host with `shutdown-daemon` role)
+      threshold: 50              # 1-99 (% battery)
+      poll_interval: 30          # seconds, > 0
+      slack_webhook_env: SLACK_WEBHOOK   # optional; env var name (not URL) at apply time
   - name: workstation
     address: 192.0.2.20
     user: admin
     roles: [nut-client, shutdown-target]
     shutdown:                    # used when host has role `shutdown-target`
       command: ~/shutdown.sh     # path → deployed; bare cmd (e.g. `poweroff`) → sent inline
-shutdown_daemon:                 # required when any host has role `shutdown-daemon`
+shutdown_daemon:                 # OPTIONAL fleet-wide default; a per-host block overrides it
   threshold: 50                  # 1-99 (% battery)
   poll_interval: 30              # seconds, > 0
   slack_webhook_env: SLACK_WEBHOOK   # optional; env var name (not URL) at apply time
@@ -323,13 +327,20 @@ shutdown_daemon:                 # required when any host has role `shutdown-dae
 
 **Role enum:** `nut-server`, `nut-client`, `exporter`, `shutdown-daemon`, `shutdown-target`.
 
+**Shutdown-daemon config precedence:** a host's own `shutdown_daemon` block →
+the root-level `shutdown_daemon` block (fleet-wide default) → built-in 50% / 30s.
+The root block is optional and kept for back-compat; new inventories put the
+config on the daemon host. Both `host.shutdown_daemon` and root `shutdown_daemon`
+appear in `inventory show -o json`.
+
 **Validation rules** (enforced by `inventory validate`, also at `plan` and `apply` time):
 - Required: `hosts[].name`, `address`, `user`, `roles`
 - No duplicate host names
 - `nut-server` requires `ups.name` + `ups.driver`
 - `shutdown-target` with a `shutdown` block needs `command`
-- `shutdown_daemon` block requires at least one host with `shutdown-daemon` role
-- `threshold` ∈ [1, 99], `poll_interval` > 0
+- a root `shutdown_daemon` block requires at least one host with `shutdown-daemon` role
+- a per-host `shutdown_daemon` block requires that host to have the `shutdown-daemon` role
+- `threshold` ∈ [1, 99], `poll_interval` > 0 (both the global block and per-host overrides)
 
 ---
 

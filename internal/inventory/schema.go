@@ -25,6 +25,10 @@ type Host struct {
 	Roles    []Role    `yaml:"roles"              json:"roles"`
 	UPS      *UPS      `yaml:"ups,omitempty"      json:"ups,omitempty"`
 	Shutdown *Shutdown `yaml:"shutdown,omitempty" json:"shutdown,omitempty"`
+	// ShutdownDaemon overrides the fleet-wide Inventory.ShutdownDaemon for
+	// this host's battery-watch daemon. Only meaningful on a host with role
+	// shutdown-daemon. nil = inherit the global default (or built-in 50/30).
+	ShutdownDaemon *ShutdownDaemon `yaml:"shutdown_daemon,omitempty" json:"shutdown_daemon,omitempty"`
 }
 
 // Role enumerates what a host does.
@@ -70,8 +74,10 @@ type Shutdown struct {
 	Command string `yaml:"command" json:"command"`
 }
 
-// ShutdownDaemon is the global configuration for the battery-shutdown daemon.
-// Lives on the host(s) with role shutdown-daemon.
+// ShutdownDaemon configures the battery-shutdown daemon. It can be set
+// per-host (Host.ShutdownDaemon) and/or fleet-wide (Inventory.ShutdownDaemon):
+// a host's own block overrides the global default, which in turn overrides the
+// built-in fallback (50% / 30s). See Inventory.EffectiveShutdownDaemon.
 type ShutdownDaemon struct {
 	Threshold       int    `yaml:"threshold"                   json:"threshold"`
 	PollInterval    int    `yaml:"poll_interval"               json:"poll_interval"`
@@ -100,6 +106,17 @@ func (h *Host) HasRole(r Role) bool {
 
 // String formats a Role for display (just the underlying string).
 func (r Role) String() string { return string(r) }
+
+// EffectiveShutdownDaemon returns the daemon config in effect for h: the
+// host's own override if set, otherwise the fleet-wide default, otherwise nil
+// (the caller applies the built-in 50% / 30s fallback). Centralises the
+// per-host → global precedence so the role and the TUI agree.
+func (inv *Inventory) EffectiveShutdownDaemon(h *Host) *ShutdownDaemon {
+	if h != nil && h.ShutdownDaemon != nil {
+		return h.ShutdownDaemon
+	}
+	return inv.ShutdownDaemon
+}
 
 // HostsWithRole returns the subset of hosts that include role r.
 func (inv *Inventory) HostsWithRole(r Role) []*Host {

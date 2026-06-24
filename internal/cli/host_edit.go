@@ -29,7 +29,7 @@ func runAddHost(path string) error {
 	if err != nil {
 		return err
 	}
-	host, err := forms.AskHost(len(inv.Hosts)+1, wizardDriverDetector)
+	host, err := forms.AskHost(len(inv.Hosts)+1, wizardDriverDetector, inv.ShutdownDaemon)
 	if err != nil {
 		return cancelledOrErr(err, "no host added")
 	}
@@ -47,7 +47,7 @@ func runEditHost(path string, idx int) error {
 	if idx < 0 || idx >= len(inv.Hosts) {
 		return fmt.Errorf("host index %d out of range (have %d hosts)", idx, len(inv.Hosts))
 	}
-	edited, err := forms.EditHost(&inv.Hosts[idx], wizardDriverDetector)
+	edited, err := forms.EditHost(&inv.Hosts[idx], wizardDriverDetector, inv.ShutdownDaemon)
 	if err != nil {
 		return cancelledOrErr(err, "no changes made")
 	}
@@ -101,21 +101,12 @@ func runApplyHost(path string, idx int) error {
 	return runApply(os.Stdin, os.Stdout, os.Stderr, path, inv.Hosts[idx].Name, true, 0, outputText)
 }
 
-// finalizeHostChange collects any now-required daemon config, shows a
-// summary of the affected host, and saves only after the user confirms.
+// finalizeHostChange shows a summary of the affected host and saves only
+// after the user confirms. A shutdown-daemon host's battery-watch tuning is
+// collected inline in the wizard (forms.collectRoleDetails), so there's no
+// separate daemon-config step here.
 // action is the past-tense verb shown in the summary ("added"/"updated").
 func finalizeHostChange(inv *inventory.Inventory, changed *inventory.Host, path, action string) error {
-	// Mirror init's step 3: a shutdown-daemon host needs global daemon
-	// config. Collect it before the summary so the user can confirm the
-	// whole change at once.
-	if len(inv.HostsWithRole(inventory.RoleShutdownDaemon)) > 0 && inv.ShutdownDaemon == nil {
-		d, err := forms.AskShutdownDaemon()
-		if err != nil {
-			return cancelledOrErr(err, "nothing was saved")
-		}
-		inv.ShutdownDaemon = d
-	}
-
 	// Summary before saving.
 	bar := strings.Repeat("─", 52)
 	fmt.Fprintf(os.Stdout, "\n%s\nHost to be %s:\n\n", bar, action)
@@ -161,6 +152,13 @@ func printHostSummary(w io.Writer, h *inventory.Host) {
 	}
 	if h.Shutdown != nil {
 		fmt.Fprintf(w, "  shutdown: %s\n", h.Shutdown.Command)
+	}
+	if d := h.ShutdownDaemon; d != nil {
+		fmt.Fprintf(w, "  daemon:   threshold=%d%% poll=%ds", d.Threshold, d.PollInterval)
+		if d.SlackWebhookEnv != "" {
+			fmt.Fprintf(w, " slack=$%s", d.SlackWebhookEnv)
+		}
+		fmt.Fprintln(w)
 	}
 }
 

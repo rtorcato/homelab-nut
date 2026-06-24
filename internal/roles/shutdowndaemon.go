@@ -146,9 +146,9 @@ func (r shutdownDaemon) Plan(ctx context.Context, conn *ssh.Connection, h *inven
 			return nil, fmt.Errorf("shutdown-daemon on %s: inventory has no hosts with role 'shutdown-target' — nothing for the daemon to power down", h.Name)
 		}
 		cmdOverrides = remoteCmdsFromInventory(inv)
-		if inv.ShutdownDaemon != nil {
-			threshold = inv.ShutdownDaemon.Threshold
-			pollInterval = inv.ShutdownDaemon.PollInterval
+		if cfg := inv.EffectiveShutdownDaemon(h); cfg != nil {
+			threshold = cfg.Threshold
+			pollInterval = cfg.PollInterval
 		}
 	}
 
@@ -186,10 +186,10 @@ func (r shutdownDaemon) Apply(ctx context.Context, conn *ssh.Connection, h *inve
 	threshold := 50
 	pollInterval := 30
 	slackWebhook := ""
-	if inv.ShutdownDaemon != nil {
-		threshold = inv.ShutdownDaemon.Threshold
-		pollInterval = inv.ShutdownDaemon.PollInterval
-		if env := inv.ShutdownDaemon.SlackWebhookEnv; env != "" {
+	if cfg := inv.EffectiveShutdownDaemon(h); cfg != nil {
+		threshold = cfg.Threshold
+		pollInterval = cfg.PollInterval
+		if env := cfg.SlackWebhookEnv; env != "" {
 			slackWebhook = os.Getenv(env)
 		}
 	}

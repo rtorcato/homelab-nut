@@ -14,8 +14,9 @@ func TestWriteTo_RoundTrip(t *testing.T) {
 		Hosts: []Host{
 			{
 				Name: "pi", Address: "192.0.2.10", User: "pi",
-				Roles: []Role{RoleNUTServer, RoleExporter, RoleShutdownDaemon},
-				UPS:   &UPS{Name: "myups", Driver: "usbhid-ups"},
+				Roles:          []Role{RoleNUTServer, RoleExporter, RoleShutdownDaemon},
+				UPS:            &UPS{Name: "myups", Driver: "usbhid-ups"},
+				ShutdownDaemon: &ShutdownDaemon{Threshold: 40, PollInterval: 20},
 			},
 			{
 				Name: "ws", Address: "192.0.2.20", User: "admin",
