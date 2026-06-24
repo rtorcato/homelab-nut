@@ -32,5 +32,5 @@ func main() {
 	if msg := err.Error(); msg != "" {
 		fmt.Fprintf(os.Stderr, "homelab-nut: %s\n", msg)
 	}
-	os.Exit(1)
+	os.Exit(cli.ExitCode(err))
 }

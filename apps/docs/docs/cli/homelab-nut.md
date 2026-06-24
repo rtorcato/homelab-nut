@@ -35,6 +35,7 @@ homelab-nut [flags]
 * [homelab-nut inventory](./homelab-nut_inventory)	 - Inspect and edit the homelab-nut inventory
 * [homelab-nut logs](./homelab-nut_logs)	 - Tail a host's systemd journal over SSH
 * [homelab-nut plan](./homelab-nut_plan)	 - Preview what `apply` would change on each host (or JSON with -o json)
+* [homelab-nut shutdown](./homelab-nut_shutdown)	 - Operate the fleet's shutdown chain
 * [homelab-nut status](./homelab-nut_status)	 - Poll each nut-server host for live UPS state
 * [homelab-nut version](./homelab-nut_version)	 - Print the version, commit, and build date (or JSON with -o json)
 
