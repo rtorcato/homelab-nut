@@ -86,6 +86,21 @@ func runDeleteHost(path string, idx int) error {
 	return nil
 }
 
+// runApplyHost applies a single selected host over SSH, without re-running
+// the edit wizard — the TUI's 'a' shortcut to converge a host in place. The
+// full inventory is still loaded so cross-host roles resolve; --auto-approve
+// since the user explicitly asked to apply this host.
+func runApplyHost(path string, idx int) error {
+	inv, err := inventory.Load(path)
+	if err != nil {
+		return err
+	}
+	if idx < 0 || idx >= len(inv.Hosts) {
+		return fmt.Errorf("host index %d out of range (have %d hosts)", idx, len(inv.Hosts))
+	}
+	return runApply(os.Stdin, os.Stdout, os.Stderr, path, inv.Hosts[idx].Name, true, 0, outputText)
+}
+
 // finalizeHostChange collects any now-required daemon config, shows a
 // summary of the affected host, and saves only after the user confirms.
 // action is the past-tense verb shown in the summary ("added"/"updated").

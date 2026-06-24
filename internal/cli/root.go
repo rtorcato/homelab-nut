@@ -98,7 +98,7 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 		// TUI loop — show the error and relaunch so the user can retry.
 		switch tui.ExitAction(finalModel) {
 		case "init":
-			if err := runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path); err != nil {
+			if err := runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path, false); err != nil {
 				return err
 			}
 		case "edit":
@@ -113,6 +113,9 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		case "delete-host":
 			reportHostActionErr(cmd.ErrOrStderr(), "delete host", runDeleteHost(path, tui.ExitHostIndex(finalModel)))
+			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
+		case "apply-host":
+			reportHostActionErr(cmd.ErrOrStderr(), "apply host", runApplyHost(path, tui.ExitHostIndex(finalModel)))
 			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		case "detect-host":
 			fmt.Fprintln(cmd.OutOrStdout(), "Scanning host for connected UPS over SSH (nut-scanner)…")
