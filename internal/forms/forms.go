@@ -25,25 +25,33 @@ import (
 // need to import huh directly.
 var ErrAborted = huh.ErrUserAborted
 
+// DriverDetector is an optional hook the wizard calls to pre-fill the UPS
+// driver for a nut-server host before showing the UPS form. It returns the
+// detected driver and true on success, or ("", false) to fall back to the
+// default. Passing it as a callback keeps this package free of an ssh
+// dependency — the cli layer supplies an implementation that scans over
+// SSH. nil means "skip detection".
+type DriverDetector func(host *inventory.Host) (driver string, ok bool)
+
 // AskHost runs the guided wizard for a brand-new host: name/address/user/
 // roles plus the conditional UPS and shutdown sub-forms when those roles
 // are selected. index is the 1-based human-friendly host number shown in
-// the form title.
-func AskHost(index int) (*inventory.Host, error) {
+// the form title. detect (optional) pre-fills the UPS driver via a scan.
+func AskHost(index int, detect DriverDetector) (*inventory.Host, error) {
 	host := &inventory.Host{}
 	roleStrings := []string{}
 
 	if err := hostForm(fmt.Sprintf("Host #%d", index), host, &roleStrings).Run(); err != nil {
 		return nil, err
 	}
-	return collectRoleDetails(host, roleStrings)
+	return collectRoleDetails(host, roleStrings, detect)
 }
 
 // EditHost runs the same guided wizard as AskHost, but seeded with an
 // existing host's values so the user edits in place. The returned host is
 // a fresh value safe to assign back into the inventory slice; UPS and
 // shutdown config is dropped when the corresponding role is unchecked.
-func EditHost(existing *inventory.Host) (*inventory.Host, error) {
+func EditHost(existing *inventory.Host, detect DriverDetector) (*inventory.Host, error) {
 	host := *existing // value copy — UPS/Shutdown pointers reseeded below
 	roleStrings := make([]string, len(existing.Roles))
 	for i, r := range existing.Roles {
@@ -53,7 +61,7 @@ func EditHost(existing *inventory.Host) (*inventory.Host, error) {
 	if err := hostForm("Edit host: "+existing.Name, &host, &roleStrings).Run(); err != nil {
 		return nil, err
 	}
-	return collectRoleDetails(&host, roleStrings)
+	return collectRoleDetails(&host, roleStrings, detect)
 }
 
 // hostForm builds the first wizard step (identity + roles) bound to the
@@ -129,7 +137,7 @@ func roleOptions() []huh.Option[string] {
 // converts the selected role strings, then runs the conditional UPS and
 // shutdown sub-forms. Pre-existing UPS/shutdown values seed those forms
 // (so editing keeps them); deselecting a role clears its config.
-func collectRoleDetails(host *inventory.Host, roleStrings []string) (*inventory.Host, error) {
+func collectRoleDetails(host *inventory.Host, roleStrings []string, detect DriverDetector) (*inventory.Host, error) {
 	host.Roles = make([]inventory.Role, len(roleStrings))
 	for i, r := range roleStrings {
 		host.Roles[i] = inventory.Role(r)
@@ -140,17 +148,32 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string) (*inventory.
 		if ups == nil {
 			ups = &inventory.UPS{}
 		}
+		// Prefill sensible, editable defaults so a user who doesn't yet
+		// know the values can just press enter. The name is a label they
+		// choose; the driver defaults to usbhid-ups but is best-effort
+		// auto-detected over SSH when a detector is supplied and the host
+		// is reachable with nut-scanner installed.
+		if ups.Name == "" {
+			ups.Name = "myups"
+		}
+		if ups.Driver == "" {
+			ups.Driver = "usbhid-ups"
+			if detect != nil {
+				if d, ok := detect(host); ok && d != "" {
+					ups.Driver = d
+				}
+			}
+		}
 		if err := huh.NewForm(huh.NewGroup(
 			huh.NewNote().Title(fmt.Sprintf("UPS on %s", host.Name)),
 			huh.NewInput().
 				Title("UPS name").
-				Description("As reported by `upsc -l` — typically `myups`").
+				Description("A short label you choose — becomes the [section] in ups.conf.").
 				Value(&ups.Name).
 				Validate(RequireNonEmpty("ups.name")),
 			huh.NewInput().
 				Title("Driver").
-				Description("e.g. usbhid-ups, blazer_usb, snmp-ups").
-				Placeholder("usbhid-ups").
+				Description("apply auto-detects this with nut-scanner; usbhid-ups fits most USB UPSes (also blazer_usb, snmp-ups).").
 				Value(&ups.Driver).
 				Validate(RequireNonEmpty("ups.driver")),
 		)).Run(); err != nil {

@@ -50,7 +50,7 @@ func runInit(_ io.Reader, stdout, stderr io.Writer, path string) error {
 
 	// 2. Add hosts in a loop. At least one is required.
 	for {
-		host, err := forms.AskHost(len(inv.Hosts) + 1)
+		host, err := forms.AskHost(len(inv.Hosts)+1, wizardDriverDetector)
 		if err != nil {
 			return err
 		}
