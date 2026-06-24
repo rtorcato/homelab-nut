@@ -227,6 +227,16 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	case "n", "N":
+		// Add a new host via the guided wizard (runs after the TUI
+		// suspends). Works from any screen so the user never has to hunt
+		// for the Hosts tab first. The empty-state Dashboard points at 'i'
+		// (init) instead, so this requires an existing inventory to append to.
+		if m.inv != nil && len(m.inv.Hosts) > 0 {
+			m.exitAction = "add-host"
+			return m, tea.Quit
+		}
+		return m, nil
 	case "s", "S":
 		// Scan the selected host for its UPS (nut-scanner over SSH) and
 		// write the detected driver back. Only meaningful for a nut-server
@@ -285,10 +295,6 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.inv != nil && len(m.inv.Hosts) > 0 {
 				m.current = screenHost
 			}
-		case "n", "N":
-			// New host — the guided wizard runs after the TUI suspends.
-			m.exitAction = "add-host"
-			return m, tea.Quit
 		case "d", "D":
 			if m.inv != nil && len(m.inv.Hosts) > 0 {
 				m.exitAction = "delete-host"
@@ -372,13 +378,13 @@ func (m rootModel) renderTabBar() string {
 func (m rootModel) renderStatusBar() string {
 	hints := []string{"tab cycles", "esc backs out", "? help", "q quits"}
 	if m.current == screenDashboard && len(m.dashboard.rows) > 0 {
-		hints = append([]string{"↑↓ select", "enter drill in"}, hints...)
+		hints = append([]string{"↑↓ select", "enter drill in", "n add host"}, hints...)
 	}
 	if m.current == screenHosts {
 		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS"}, hints...)
 	}
 	if m.current == screenHost {
-		hints = append([]string{"e edit", "s scan UPS"}, hints...)
+		hints = append([]string{"n add", "e edit", "s scan UPS"}, hints...)
 	}
 	if m.current == screenApply && m.apply.status != applyRunning {
 		hints = append([]string{"a apply"}, hints...)
@@ -461,7 +467,7 @@ func (m rootModel) viewHelp() string {
 		{"?", "open this help"},
 		{"↑ ↓ / k j", "select host (Hosts + Dashboard)"},
 		{"enter", "drill into selected host"},
-		{"n", "add a new host (Hosts screen)"},
+		{"n", "add a new host (any screen)"},
 		{"e", "edit selected host (Hosts/detail) · else $EDITOR"},
 		{"d", "delete selected host (Hosts screen)"},
 		{"s", "scan selected nut-server host for its UPS"},

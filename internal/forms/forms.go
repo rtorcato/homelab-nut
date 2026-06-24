@@ -70,7 +70,9 @@ func EditHost(existing *inventory.Host, detect DriverDetector) (*inventory.Host,
 func hostForm(title string, host *inventory.Host, roleStrings *[]string) *huh.Form {
 	return huh.NewForm(
 		huh.NewGroup(
-			huh.NewNote().Title(title),
+			huh.NewNote().
+				Title(title).
+				Description("Press Esc or Ctrl+C any time to cancel — nothing is saved unless you finish the wizard."),
 			huh.NewInput().
 				Title("Name").
 				Description("Short identifier — e.g. pi-rack, workstation, dream-machine").
@@ -165,19 +167,30 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string, detect Drive
 			}
 		}
 		if err := huh.NewForm(huh.NewGroup(
-			huh.NewNote().Title(fmt.Sprintf("UPS on %s", host.Name)),
+			huh.NewNote().
+				Title(fmt.Sprintf("UPS on %s", host.Name)).
+				Description("Optional — both fields are pre-filled with working defaults. "+
+					"If you don't know them yet, just press enter; apply auto-detects the\n"+
+					"real driver and you can refine these later."),
 			huh.NewInput().
-				Title("UPS name").
+				Title("UPS name (optional)").
 				Description("A short label you choose — becomes the [section] in ups.conf.").
-				Value(&ups.Name).
-				Validate(RequireNonEmpty("ups.name")),
+				Value(&ups.Name),
 			huh.NewInput().
-				Title("Driver").
+				Title("Driver (optional)").
 				Description("apply auto-detects this with nut-scanner; usbhid-ups fits most USB UPSes (also blazer_usb, snmp-ups).").
-				Value(&ups.Driver).
-				Validate(RequireNonEmpty("ups.driver")),
+				Value(&ups.Driver),
 		)).Run(); err != nil {
 			return nil, err
+		}
+		// Belt-and-suspenders: a nut-server host must carry a UPS name and
+		// driver (inventory validation enforces it), so if the user cleared
+		// a field, fall back to the default rather than failing the save.
+		if strings.TrimSpace(ups.Name) == "" {
+			ups.Name = "myups"
+		}
+		if strings.TrimSpace(ups.Driver) == "" {
+			ups.Driver = "usbhid-ups"
 		}
 		host.UPS = ups
 	} else {
