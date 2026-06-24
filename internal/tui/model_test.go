@@ -146,6 +146,20 @@ func TestHostsScreenSelectionAndDrillIn(t *testing.T) {
 	}
 }
 
+func TestEscBacksOutToDashboard(t *testing.T) {
+	m := tea.Model(modelWithInventory(fixtureInventory()))
+	// Navigate to Apply (without starting a run), then esc should return
+	// to the Dashboard rather than being a no-op.
+	m, _ = send(t, m, key("3"))
+	if got := m.(rootModel).current; got != screenApply {
+		t.Fatalf("after '3': current = %v, want Apply", got)
+	}
+	m, _ = send(t, m, key("esc"))
+	if got := m.(rootModel).current; got != screenDashboard {
+		t.Errorf("after esc on Apply: current = %v, want Dashboard", got)
+	}
+}
+
 func TestApplyKeyJumpsToApplyScreen(t *testing.T) {
 	m := tea.Model(modelWithInventory(fixtureInventory()))
 	m, _ = send(t, m, key("a"))

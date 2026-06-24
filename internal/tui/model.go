@@ -170,8 +170,16 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 	case "esc":
-		if m.current == screenHost {
+		// Back out one level toward the Dashboard. A running apply keeps
+		// going in the background — esc just changes the view; come back
+		// with '3' to see the result.
+		switch m.current {
+		case screenHost:
 			m.current = screenHosts
+		case screenDashboard:
+			// Already home — nothing to back out to.
+		default:
+			m.current = screenDashboard
 		}
 		return m, nil
 	case "tab":
