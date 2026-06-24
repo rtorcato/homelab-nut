@@ -1,0 +1,18 @@
+# minimal — a single host that owns the UPS.
+#
+# The simplest possible inventory: one machine with a UPS plugged into it.
+# The `nut-server` role installs NUT, runs `upsd` (serves UPS status on the
+# network) and `upsmon` (watches the UPS and shuts THIS host down when the
+# battery runs low). Nothing else on the network is managed.
+#
+# Validate:  homelab-nut inventory validate -i examples/inventories/minimal.yaml
+
+hosts:
+  - name: server
+    address: 192.0.2.10        # IP or DNS name reachable over SSH
+    user: admin                # SSH user that can sudo
+    roles:
+      - nut-server             # owns the UPS; serves status; self-shuts on low battery
+    ups:
+      name: myups              # label you choose — becomes the [section] in ups.conf
+      driver: usbhid-ups       # most USB UPSes; `apply` auto-detects via nut-scanner

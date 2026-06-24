@@ -327,6 +327,8 @@ shutdown_daemon:                 # OPTIONAL fleet-wide default; a per-host block
   slack_webhook_env: SLACK_WEBHOOK   # optional; env var name (not URL) at apply time
 ```
 
+**Worked examples:** commented sample inventories per scenario live in [`examples/inventories/`](examples/inventories/) (minimal, server+client, SSH shutdown-targets, full multi-UPS).
+
 **Role enum:** `nut-server`, `nut-client`, `exporter`, `shutdown-daemon`, `shutdown-target`.
 
 **Shutdown-daemon config precedence:** a host's own `shutdown_daemon` block →

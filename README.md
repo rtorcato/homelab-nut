@@ -52,6 +52,8 @@ workstation    192.0.2.20  admin  nut-client,shutdown-target
 dream-machine  192.0.2.1   admin  shutdown-target
 ```
 
+New to the schema? [`examples/inventories/`](examples/inventories/) has commented sample configs for common topologies — minimal single-server, server + network client, SSH shutdown-targets, and a full multi-UPS homelab.
+
 For AI agents, CI, and scripts — every subcommand emits stable JSON with documented exit codes:
 
 ```bash

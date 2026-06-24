@@ -1,13 +1,25 @@
 # 📂 examples/
 
-Drop-in configuration snippets for scraping `nut-exporter` with Prometheus and visualising it in Grafana. **None of this runs as part of this repo's Docker stack** — these are reference files you copy into your own Prometheus/Grafana setup.
+Reference files you copy into your own setup. **None of this runs as part of
+this repo's Docker stack.**
 
-See [`docs/prometheus-grafana.md`](../docs/prometheus-grafana.md) for the full how-to.
+## Inventory samples
+
+Commented sample inventories for different topologies live in
+[`inventories/`](inventories/) — start there to learn the schema by example
+(minimal single-server, server + network client, SSH shutdown-targets, and a
+full multi-UPS homelab). `homelab-nut.yaml` here is a ready-to-edit starter.
+
+## Prometheus / Grafana
+
+Drop-in configuration snippets for scraping `nut-exporter` with Prometheus and visualising it in Grafana. See [`docs/prometheus-grafana.md`](../docs/prometheus-grafana.md) for the full how-to.
 
 ## Contents
 
 ```
 examples/
+├── homelab-nut.yaml            # Ready-to-edit starter inventory
+├── inventories/                # Commented sample inventories, one per scenario
 ├── prometheus/
 │   └── prometheus.yml          # Scrape job for nut-exporter — add to your prometheus.yml
 └── grafana/
