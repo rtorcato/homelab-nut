@@ -21,7 +21,7 @@ func TestWriteTo_RoundTrip(t *testing.T) {
 			{
 				Name: "ws", Address: "192.0.2.20", User: "admin",
 				Roles:    []Role{RoleNUTClient, RoleShutdownTarget},
-				Shutdown: &Shutdown{Command: "~/shutdown.sh"},
+				Shutdown: &Shutdown{Command: "~/shutdown.sh", Delay: 60},
 			},
 		},
 		ShutdownDaemon: &ShutdownDaemon{Threshold: 50, PollInterval: 30, SlackWebhookEnv: "SLACK_WEBHOOK"},

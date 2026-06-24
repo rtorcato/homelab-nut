@@ -120,8 +120,13 @@ func validateHost(v *ValidationError, h *Host, idx int) {
 
 	// shutdown-target needs a command (or fall back to default at apply time —
 	// we only flag if the block exists but command is empty).
-	if h.Shutdown != nil && h.Shutdown.Command == "" {
-		v.add(p("shutdown.command"), "must be a script path or inline command")
+	if h.Shutdown != nil {
+		if h.Shutdown.Command == "" {
+			v.add(p("shutdown.command"), "must be a script path or inline command")
+		}
+		if h.Shutdown.Delay < 0 {
+			v.add(p("shutdown.delay"), fmt.Sprintf("%d must be zero or positive (seconds)", h.Shutdown.Delay))
+		}
 	}
 
 	// Per-host daemon override: validate its values, and flag it on a host

@@ -110,6 +110,34 @@ func TestValidate_OrphanShutdownDaemon(t *testing.T) {
 	}
 }
 
+func TestValidate_NegativeShutdownDelay(t *testing.T) {
+	inv := &Inventory{
+		Hosts: []Host{{
+			Name: "ws", Address: "192.0.2.1", User: "u",
+			Roles:    []Role{RoleShutdownTarget},
+			Shutdown: &Shutdown{Command: "poweroff", Delay: -5},
+		}},
+	}
+	err := inv.Validate()
+	iss := pickFirstIssue(t, err, "hosts[0].shutdown.delay")
+	if !strings.Contains(iss.Message, "zero or positive") {
+		t.Errorf("message = %q", iss.Message)
+	}
+}
+
+func TestValidate_AcceptsShutdownDelay(t *testing.T) {
+	inv := &Inventory{
+		Hosts: []Host{{
+			Name: "udm", Address: "10.0.10.1", User: "root",
+			Roles:    []Role{RoleShutdownTarget},
+			Shutdown: &Shutdown{Command: "poweroff", Delay: 60},
+		}},
+	}
+	if err := inv.Validate(); err != nil {
+		t.Fatalf("a non-negative shutdown delay should validate, got: %v", err)
+	}
+}
+
 func TestValidate_PerHostShutdownDaemonRange(t *testing.T) {
 	inv := &Inventory{
 		Hosts: []Host{{

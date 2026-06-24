@@ -86,6 +86,20 @@ func TestIntMin(t *testing.T) {
 	}
 }
 
+func TestNonNegativeIntOrEmpty(t *testing.T) {
+	v := NonNegativeIntOrEmpty("shutdown.delay")
+	for _, ok := range []string{"", "  ", "0", "60", " 30 "} {
+		if err := v(ok); err != nil {
+			t.Errorf("NonNegativeIntOrEmpty(%q) = %v, want nil", ok, err)
+		}
+	}
+	for _, bad := range []string{"-1", "abc", "1.5"} {
+		if err := v(bad); err == nil {
+			t.Errorf("NonNegativeIntOrEmpty(%q) = nil, want error", bad)
+		}
+	}
+}
+
 // Note: the AskHost / EditHost / ConfirmXxx functions invoke
 // huh.Form.Run() which requires an interactive terminal. They're not
 // unit-tested here — coverage comes from end-to-end smoke tests of

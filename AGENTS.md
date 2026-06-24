@@ -319,6 +319,8 @@ hosts:
     roles: [nut-client, shutdown-target]
     shutdown:                    # used when host has role `shutdown-target`
       command: ~/shutdown.sh     # path → deployed; bare cmd (e.g. `poweroff`) → sent inline
+      delay: 0                   # optional; seconds the daemon waits before sending this
+                                 # target's shutdown (sequence dependents, e.g. gateway last)
 shutdown_daemon:                 # OPTIONAL fleet-wide default; a per-host block overrides it
   threshold: 50                  # 1-99 (% battery)
   poll_interval: 30              # seconds, > 0
@@ -337,7 +339,7 @@ appear in `inventory show -o json`.
 - Required: `hosts[].name`, `address`, `user`, `roles`
 - No duplicate host names
 - `nut-server` requires `ups.name` + `ups.driver`
-- `shutdown-target` with a `shutdown` block needs `command`
+- `shutdown-target` with a `shutdown` block needs `command`; `shutdown.delay` (if set) must be ≥ 0 (seconds)
 - a root `shutdown_daemon` block requires at least one host with `shutdown-daemon` role
 - a per-host `shutdown_daemon` block requires that host to have the `shutdown-daemon` role
 - `threshold` ∈ [1, 99], `poll_interval` > 0 (both the global block and per-host overrides)

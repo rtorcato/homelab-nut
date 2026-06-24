@@ -121,6 +121,51 @@ func TestRemoteCmdsFromInventory(t *testing.T) {
 	}
 }
 
+func TestRemoteDelaysFromInventory(t *testing.T) {
+	cases := []struct {
+		name string
+		inv  *inventory.Inventory
+		want string
+	}{
+		{"nil", nil, ""},
+		{"empty", &inventory.Inventory{}, ""},
+		{
+			"target without delay — no override",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff"}},
+			}},
+			"",
+		},
+		{
+			"zero delay is skipped",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Delay: 0}},
+			}},
+			"",
+		},
+		{
+			"positive delay emits DELAY_ line",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "udm", User: "root", Address: "10.0.10.1", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Delay: 60}},
+			}},
+			"DELAY_10_0_10_1=60",
+		},
+		{
+			"multiple targets, inventory order, only delayed ones",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff"}},
+				{Name: "udm", User: "root", Address: "10.0.10.1", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Delay: 60}},
+			}},
+			"DELAY_10_0_10_1=60",
+		},
+	}
+	for _, tc := range cases {
+		if got := remoteDelaysFromInventory(tc.inv); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestUPSRefFromInventory(t *testing.T) {
 	cases := []struct {
 		name string
