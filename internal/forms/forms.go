@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/huh"
 	"github.com/rtorcato/homelab-nut/internal/inventory"
 )
@@ -24,6 +25,22 @@ import (
 // rather than a hard error. It aliases huh's sentinel so callers don't
 // need to import huh directly.
 var ErrAborted = huh.ErrUserAborted
+
+// cancelHint is shown on every wizard step's note so the user always sees
+// how to back out. huh's own footer is built from the focused field's
+// keybinds and can't carry the form-level cancel binding, so we surface it
+// here instead.
+const cancelHint = "Esc or Ctrl+C cancels — nothing is saved unless you finish the wizard."
+
+// cancelKeyMap is huh's default keymap with Esc added to the abort binding
+// (huh binds only Ctrl+C by default). Applied to every wizard form so Esc
+// cancels, matching cancelHint. The form checks this binding before the
+// focused field, so Esc reliably aborts from any step.
+func cancelKeyMap() *huh.KeyMap {
+	km := huh.NewDefaultKeyMap()
+	km.Quit = key.NewBinding(key.WithKeys("esc", "ctrl+c"))
+	return km
+}
 
 // DriverDetector is an optional hook the wizard calls to pre-fill the UPS
 // driver for a nut-server host before showing the UPS form. It returns the
@@ -72,7 +89,7 @@ func hostForm(title string, host *inventory.Host, roleStrings *[]string) *huh.Fo
 		huh.NewGroup(
 			huh.NewNote().
 				Title(title).
-				Description("Press Esc or Ctrl+C any time to cancel — nothing is saved unless you finish the wizard."),
+				Description(cancelHint),
 			huh.NewInput().
 				Title("Name").
 				Description("Short identifier — e.g. pi-rack, workstation, dream-machine").
@@ -101,7 +118,7 @@ func hostForm(title string, host *inventory.Host, roleStrings *[]string) *huh.Fo
 				}).
 				Value(roleStrings),
 		),
-	)
+	).WithKeyMap(cancelKeyMap())
 }
 
 // roleDescriptions is the one-line "what does this role do" blurb shown
@@ -171,7 +188,7 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string, detect Drive
 				Title(fmt.Sprintf("UPS on %s", host.Name)).
 				Description("Optional — both fields are pre-filled with working defaults. "+
 					"If you don't know them yet, just press enter; apply auto-detects the\n"+
-					"real driver and you can refine these later."),
+					"real driver and you can refine these later.\n"+cancelHint),
 			huh.NewInput().
 				Title("UPS name (optional)").
 				Description("A short label you choose — becomes the [section] in ups.conf.").
@@ -180,7 +197,7 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string, detect Drive
 				Title("Driver (optional)").
 				Description("apply auto-detects this with nut-scanner; usbhid-ups fits most USB UPSes (also blazer_usb, snmp-ups).").
 				Value(&ups.Driver),
-		)).Run(); err != nil {
+		)).WithKeyMap(cancelKeyMap()).Run(); err != nil {
 			return nil, err
 		}
 		// Belt-and-suspenders: a nut-server host must carry a UPS name and
@@ -203,13 +220,15 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string, detect Drive
 			sd = &inventory.Shutdown{Command: "~/shutdown.sh"}
 		}
 		if err := huh.NewForm(huh.NewGroup(
-			huh.NewNote().Title(fmt.Sprintf("Shutdown command for %s", host.Name)),
+			huh.NewNote().
+				Title(fmt.Sprintf("Shutdown command for %s", host.Name)).
+				Description(cancelHint),
 			huh.NewInput().
 				Title("Command").
 				Description("Path → wrapped in nohup over SSH. Bare command (e.g. `poweroff`) → sent inline.").
 				Value(&sd.Command).
 				Validate(RequireNonEmpty("shutdown.command")),
-		)).Run(); err != nil {
+		)).WithKeyMap(cancelKeyMap()).Run(); err != nil {
 			return nil, err
 		}
 		host.Shutdown = sd
@@ -228,7 +247,9 @@ func AskShutdownDaemon() (*inventory.ShutdownDaemon, error) {
 
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewNote().Title("Shutdown daemon — global config"),
+			huh.NewNote().
+				Title("Shutdown daemon — global config").
+				Description(cancelHint),
 			huh.NewInput().
 				Title("Battery threshold (%)").
 				Description("Trigger shutdown when battery drops below this on battery.").
@@ -245,7 +266,7 @@ func AskShutdownDaemon() (*inventory.ShutdownDaemon, error) {
 				Placeholder("SLACK_WEBHOOK").
 				Value(&d.SlackWebhookEnv),
 		),
-	)
+	).WithKeyMap(cancelKeyMap())
 	if err := form.Run(); err != nil {
 		return nil, err
 	}
