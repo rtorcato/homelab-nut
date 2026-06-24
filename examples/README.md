@@ -8,7 +8,8 @@ this repo's Docker stack.**
 Commented sample inventories for different topologies live in
 [`inventories/`](inventories/) — start there to learn the schema by example
 (minimal single-server, server + network client, SSH shutdown-targets, and a
-full multi-UPS homelab). `homelab-nut.yaml` here is a ready-to-edit starter.
+full multi-UPS homelab). Copy whichever fits to `./homelab-nut.yaml` and edit,
+or run `homelab-nut init` to generate one interactively.
 
 ## Prometheus / Grafana
 
@@ -18,7 +19,6 @@ Drop-in configuration snippets for scraping `nut-exporter` with Prometheus and v
 
 ```
 examples/
-├── homelab-nut.yaml            # Ready-to-edit starter inventory
 ├── inventories/                # Commented sample inventories, one per scenario
 ├── prometheus/
 │   └── prometheus.yml          # Scrape job for nut-exporter — add to your prometheus.yml

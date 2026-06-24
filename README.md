@@ -29,7 +29,7 @@ make build                    # just compile -> bin/homelab-nut (versioned)
 
 # Run straight from source without building a binary:
 go run ./cmd/homelab-nut                                                # TUI
-go run ./cmd/homelab-nut -i examples/homelab-nut.yaml inventory list    # a subcommand
+go run ./cmd/homelab-nut -i examples/inventories/full-homelab.yaml inventory list    # a subcommand
 ```
 
 `make help` lists every dev target (`test`, `lint`, `docs-dev`, …). See **[CLAUDE.md](CLAUDE.md)** for the full build/test/lint reference and contributor workflow.
@@ -45,11 +45,13 @@ That opens the TUI. From an empty directory it walks you through setup — press
 With an inventory already in place:
 
 ```text
-$ homelab-nut -i examples/homelab-nut.yaml inventory list
-NAME           ADDRESS     USER   ROLES
-pi-rack        192.0.2.10  pi     nut-server,exporter,shutdown-daemon
-workstation    192.0.2.20  admin  nut-client,shutdown-target
-dream-machine  192.0.2.1   admin  shutdown-target
+$ homelab-nut -i examples/inventories/full-homelab.yaml inventory list
+NAME      ADDRESS     USER   ROLES
+rack-pi   192.0.2.10  pi     nut-server,exporter,shutdown-daemon
+nas-host  192.0.2.11  admin  nut-server,exporter,shutdown-daemon
+desktop   192.0.2.20  admin  nut-client
+nas       192.0.2.30  root   shutdown-target
+gateway   192.0.2.1   root   shutdown-target
 ```
 
 New to the schema? [`examples/inventories/`](examples/inventories/) has commented sample configs for common topologies — minimal single-server, server + network client, SSH shutdown-targets, and a full multi-UPS homelab.
