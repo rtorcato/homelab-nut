@@ -3,7 +3,14 @@
     "allow": [
       "WebSearch",
       "Bash(command -v upsc)",
-      "Bash(./ups-status.sh)"
+      "Bash(./ups-status.sh)",
+      "Bash(command -v ccusage)",
+      "Bash(sh ~/.claude/statusline-command.sh)",
+      "Bash(echo \"---exit: $?\")",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(golangci-lint run *)",
+      "Bash(go test *)"
     ]
   }
 }
