@@ -153,8 +153,12 @@ func run(ctx context.Context, inv *inventory.Inventory, opts Options, m mode, ou
 		return &Result{}
 	}
 	// Inventory has to ride along on ctx so roles like nut-client and
-	// shutdown-daemon can resolve cross-host data.
+	// shutdown-daemon can resolve cross-host data. The SSH config rides
+	// along too, so a role can open its own connection — nut-client and
+	// the standalone exporter dial the nut-server to auto-read its
+	// generated upsmon_remote password.
 	ctx = roles.WithInventory(ctx, inv)
+	ctx = roles.WithSSHConfig(ctx, opts.SSHConfig)
 
 	// Resolve which hosts to act on. The full inventory is already in ctx
 	// above, so cross-host roles still see every host even when OnlyHost

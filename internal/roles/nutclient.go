@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/rtorcato/homelab-nut/internal/inventory"
@@ -162,10 +161,9 @@ func (r nutClient) Apply(ctx context.Context, conn *ssh.Connection, h *inventory
 		return fmt.Errorf("nut-client apply on %s: %w", h.Name, err)
 	}
 
-	password := os.Getenv(nutMonitorPasswordEnv)
-	if password == "" {
-		return fmt.Errorf("nut-client apply on %s: %s not set — run `sudo grep upsmon_remote /root/nut-credentials.txt` on %s and export it",
-			h.Name, nutMonitorPasswordEnv, server.Name)
+	password, err := resolveMonitorPassword(ctx, server)
+	if err != nil {
+		return fmt.Errorf("nut-client apply on %s: %w", h.Name, err)
 	}
 
 	script, err := readScript("setup-client.sh")
