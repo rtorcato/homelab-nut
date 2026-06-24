@@ -124,8 +124,11 @@ func runApply(stdin io.Reader, stdout, stderr io.Writer, path string, autoApprov
 			elapsed, changedHosts, totalActions, failed)
 	}
 
+	// Apply ran but at least one host failed mid-execution: exit 3
+	// (partial failure) per the documented contract. Output already
+	// rendered above, so this is a silent code-carrying error.
 	if failed > 0 || res.HasErrors() {
-		return errSilent
+		return errExit(ExitApplyPartial)
 	}
 	return nil
 }
