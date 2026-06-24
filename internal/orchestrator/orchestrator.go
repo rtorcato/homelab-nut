@@ -52,6 +52,13 @@ type Options struct {
 	// dependencies correctly; only the named host's roles actually run,
 	// and the Result contains just that host. Empty = the whole fleet.
 	OnlyHost string
+	// Uninstall carries the parameters for the uninstall path (PurgeNUT).
+	// Ignored by Plan and Apply.
+	Uninstall roles.UninstallParams
+	// OnlyRole, when non-empty, limits the uninstall path to this single
+	// role on each host. Empty = every applicable role. Ignored by Plan
+	// and Apply.
+	OnlyRole inventory.Role
 }
 
 // HostResult records what happened on one host.
@@ -60,10 +67,11 @@ type Options struct {
 // strings (their .Error() text) via the ErrorStrings() helper since
 // the error interface itself isn't JSON-marshalable.
 type HostResult struct {
-	Host    *inventory.Host `json:"host"`
-	Diffs   []*roles.Diff   `json:"diffs"`           // populated by Plan + Apply
-	Errors  []error         `json:"-"`               // marshalled via ErrorStrings
-	Skipped []string        `json:"skipped,omitempty"` // role names skipped (inapplicable)
+	Host     *inventory.Host  `json:"host"`
+	Diffs    []*roles.Diff    `json:"diffs"`              // populated by Plan + Apply
+	Removals []*roles.Removal `json:"removals,omitempty"` // populated by Uninstall
+	Errors   []error          `json:"-"`                  // marshalled via ErrorStrings
+	Skipped  []string         `json:"skipped,omitempty"`  // role names skipped (inapplicable)
 }
 
 // ErrorStrings returns the host's errors as plain strings for JSON
@@ -124,6 +132,20 @@ func (r *Result) NoOp() bool {
 	return true
 }
 
+// NothingRemoved reports whether an uninstall run deleted nothing across
+// all hosts (every artifact was already absent). Lets the CLI return the
+// documented ExitNothingToRemove for a clean no-op teardown.
+func (r *Result) NothingRemoved() bool {
+	for _, h := range r.Hosts {
+		for _, rem := range h.Removals {
+			if len(rem.Removed) > 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // Plan walks the inventory and computes per-host diffs without making
 // any changes. It opens SSH connections so Detect can run against the
 // remote state.
@@ -141,11 +163,24 @@ func Apply(ctx context.Context, inv *inventory.Inventory, opts Options, out io.W
 	return run(ctx, inv, opts, applyAfterPlan, out)
 }
 
+// Uninstall walks the inventory and removes each applicable role's
+// artifacts in reverse of the apply order (dependents first), streaming
+// each role's output to out with a per-role prefix. opts.Uninstall.PurgeNUT
+// opts into removing the upstream NUT package. The Result's HostResults
+// carry Removals (what was deleted vs already absent) per host.
+func Uninstall(ctx context.Context, inv *inventory.Inventory, opts Options, out io.Writer) *Result {
+	if out == nil {
+		out = io.Discard
+	}
+	return run(ctx, inv, opts, uninstallMode, out)
+}
+
 type mode int
 
 const (
 	planOnly mode = iota
 	applyAfterPlan
+	uninstallMode
 )
 
 func run(ctx context.Context, inv *inventory.Inventory, opts Options, m mode, out io.Writer) *Result {
@@ -190,7 +225,7 @@ func run(ctx context.Context, inv *inventory.Inventory, opts Options, m mode, ou
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			runHost(ctx, executor, host, hr, m, out)
+			runHost(ctx, executor, host, hr, m, opts.Uninstall, opts.OnlyRole, out)
 		}()
 	}
 	wg.Wait()
@@ -213,10 +248,15 @@ func selectTargets(inv *inventory.Inventory, onlyHost string) []*inventory.Host 
 	return targets
 }
 
-func runHost(ctx context.Context, executor *ssh.Executor, host *inventory.Host, hr *HostResult, m mode, out io.Writer) {
+func runHost(ctx context.Context, executor *ssh.Executor, host *inventory.Host, hr *HostResult, m mode, p roles.UninstallParams, onlyRole inventory.Role, out io.Writer) {
 	conn, err := executor.Open(host)
 	if err != nil {
 		hr.Errors = append(hr.Errors, fmt.Errorf("ssh %s: %w", host.Name, err))
+		return
+	}
+
+	if m == uninstallMode {
+		uninstallHost(ctx, conn, host, hr, p, onlyRole, out)
 		return
 	}
 
@@ -251,6 +291,35 @@ func runHost(ctx context.Context, executor *ssh.Executor, host *inventory.Host, 
 			// Don't continue to subsequent roles on the same host once one
 			// fails — later roles often depend on earlier ones.
 			return
+		}
+	}
+}
+
+// uninstallHost removes each applicable role's artifacts in reverse of the
+// apply order — dependents first (shutdown-target before the daemon, the
+// daemon before the server), the mirror image of how Apply builds them up.
+// Per-role Removals accumulate on hr; an Uninstall error is recorded but
+// doesn't stop the remaining roles (unlike Apply, removals are independent).
+func uninstallHost(ctx context.Context, conn *ssh.Connection, host *inventory.Host, hr *HostResult, p roles.UninstallParams, onlyRole inventory.Role, out io.Writer) {
+	for i := len(roleOrder) - 1; i >= 0; i-- {
+		if onlyRole != "" && roleOrder[i] != onlyRole {
+			continue
+		}
+		role, ok := roles.ByName(string(roleOrder[i]))
+		if !ok {
+			continue
+		}
+		if !role.Applies(host) {
+			hr.Skipped = append(hr.Skipped, string(roleOrder[i]))
+			continue
+		}
+		pfx := newPrefixWriter(out, fmt.Sprintf("[%s/%s] ", host.Name, role.Name()))
+		rem, err := role.Uninstall(ctx, conn, host, p, pfx)
+		if rem != nil {
+			hr.Removals = append(hr.Removals, rem)
+		}
+		if err != nil {
+			hr.Errors = append(hr.Errors, fmt.Errorf("%s uninstall: %w", role.Name(), err))
 		}
 	}
 }

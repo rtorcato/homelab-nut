@@ -144,3 +144,14 @@ func (r exporter) Apply(ctx context.Context, conn *ssh.Connection, h *inventory.
 	}
 	return conn.Pipe(ctx, bytes.NewReader(script), cmd, out, out)
 }
+
+// Uninstall removes the nut-exporter systemd unit, its binary, and its env
+// file. These are all homelab-nut's own artifacts, so no --purge-nut gate
+// applies. The unprivileged nut-exporter user is left in place (login-less
+// and harmless; removing system users risks orphaning other files).
+func (exporter) Uninstall(ctx context.Context, conn *ssh.Connection, h *inventory.Host, _ UninstallParams, out io.Writer) (*Removal, error) {
+	return removeArtifacts(ctx, conn, "exporter", out,
+		[]string{"nut-exporter.service"},
+		[]string{"/usr/local/bin/nut_exporter", "/etc/default/nut-exporter"},
+		nil)
+}

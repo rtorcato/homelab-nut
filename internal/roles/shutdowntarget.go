@@ -174,3 +174,14 @@ func (r shutdownTarget) Apply(ctx context.Context, conn *ssh.Connection, h *inve
 
 	return nil
 }
+
+// Uninstall removes the passwordless-shutdown sudoers rule, plus the
+// deployed ~/shutdown.sh in script mode (inline-mode targets never had a
+// script). Both are homelab-nut's own artifacts, so no --purge-nut gate.
+func (r shutdownTarget) Uninstall(ctx context.Context, conn *ssh.Connection, h *inventory.Host, _ UninstallParams, out io.Writer) (*Removal, error) {
+	files := []string{"/etc/sudoers.d/ups-shutdown"}
+	if r.resolvedMode(h) == "script" && h.User != "" {
+		files = append(files, fmt.Sprintf("/home/%s/shutdown.sh", h.User))
+	}
+	return removeArtifacts(ctx, conn, "shutdown-target", out, nil, files, nil)
+}

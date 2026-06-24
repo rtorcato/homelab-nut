@@ -23,6 +23,11 @@ const (
 	// host's role failed mid-execution. Other hosts may have completed
 	// successfully — inspect the Apply output for details.
 	ExitApplyPartial = 3
+
+	// ExitNothingToRemove signals that uninstall ran cleanly but found
+	// nothing to remove — every artifact was already absent. A no-op
+	// success that scripts can distinguish from "removed something".
+	ExitNothingToRemove = 4
 )
 
 // exitCodeError carries a specific process exit code while signalling that

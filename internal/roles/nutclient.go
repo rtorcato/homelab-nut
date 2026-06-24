@@ -179,3 +179,16 @@ func (r nutClient) Apply(ctx context.Context, conn *ssh.Connection, h *inventory
 	}
 	return conn.Pipe(ctx, bytes.NewReader(script), cmd, out, out)
 }
+
+// Uninstall removes the upstream nut-client package — only with PurgeNUT,
+// since apt-purge is destructive (its conffiles include /etc/nut/upsmon.conf).
+// Without it this is a no-op that reports what --purge-nut would remove.
+func (nutClient) Uninstall(ctx context.Context, conn *ssh.Connection, h *inventory.Host, p UninstallParams, out io.Writer) (*Removal, error) {
+	if !p.PurgeNUT {
+		return &Removal{
+			Role:    "nut-client",
+			Skipped: []string{"upstream nut-client package (pass --purge-nut to remove)"},
+		}, nil
+	}
+	return removeArtifacts(ctx, conn, "nut-client", out, nil, nil, []string{"nut-client"})
+}

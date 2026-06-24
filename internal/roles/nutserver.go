@@ -120,3 +120,20 @@ func (r nutServer) Apply(ctx context.Context, conn *ssh.Connection, h *inventory
 	}
 	return conn.Pipe(ctx, bytes.NewReader(script), cmd, out, out)
 }
+
+// Uninstall removes the upstream NUT server — but only with PurgeNUT, since
+// apt-purging nut + deleting /etc/nut (and the generated credentials file)
+// is destructive and irreversible. Without it this is a no-op that reports
+// what --purge-nut would remove, so an operator sees the gate clearly.
+func (nutServer) Uninstall(ctx context.Context, conn *ssh.Connection, h *inventory.Host, p UninstallParams, out io.Writer) (*Removal, error) {
+	if !p.PurgeNUT {
+		return &Removal{
+			Role:    "nut-server",
+			Skipped: []string{"upstream NUT package + /etc/nut (pass --purge-nut to remove)"},
+		}, nil
+	}
+	return removeArtifacts(ctx, conn, "nut-server", out,
+		nil,
+		[]string{"/etc/nut", "/root/nut-credentials.txt"},
+		[]string{"nut-server", "nut"})
+}

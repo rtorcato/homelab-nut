@@ -111,6 +111,15 @@ type Role interface {
 	// Apply makes the changes described by Plan, streaming any
 	// command output to out as it arrives.
 	Apply(ctx context.Context, conn *ssh.Connection, h *inventory.Host, out io.Writer) error
+
+	// Uninstall reverses what Apply installed for this role on the host,
+	// streaming command output to out and returning a structured Removal
+	// (what was deleted vs already absent). Like Apply it must be
+	// idempotent — re-running on an already-clean host is a no-op that
+	// reports everything as skipped. p.PurgeNUT opts into removing the
+	// upstream NUT package + /etc/nut; without it only homelab-nut's own
+	// artifacts (custom units, binaries, config) are removed.
+	Uninstall(ctx context.Context, conn *ssh.Connection, h *inventory.Host, p UninstallParams, out io.Writer) (*Removal, error)
 }
 
 // registry holds the canonical role list. Concrete role packages

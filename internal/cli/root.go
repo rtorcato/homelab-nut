@@ -68,6 +68,7 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newPlanCmd())
 	cmd.AddCommand(newApplyCmd())
+	cmd.AddCommand(newUninstallCmd())
 	cmd.AddCommand(newStatusCmd())
 	cmd.AddCommand(newDetectCmd())
 	cmd.AddCommand(newLogsCmd())
@@ -116,6 +117,9 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		case "apply-host":
 			reportHostActionErr(cmd.ErrOrStderr(), "apply host", runApplyHost(path, tui.ExitHostIndex(finalModel)))
+			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
+		case "uninstall-host":
+			reportHostActionErr(cmd.ErrOrStderr(), "uninstall host", runUninstallHost(path, tui.ExitHostIndex(finalModel)))
 			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		case "detect-host":
 			fmt.Fprintln(cmd.OutOrStdout(), "Scanning host for connected UPS over SSH (nut-scanner)…")

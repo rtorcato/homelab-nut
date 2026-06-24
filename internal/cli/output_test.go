@@ -98,4 +98,7 @@ func TestExitCodesAreStable(t *testing.T) {
 	if ExitApplyPartial != 3 {
 		t.Errorf("ExitApplyPartial = %d, want 3", ExitApplyPartial)
 	}
+	if ExitNothingToRemove != 4 {
+		t.Errorf("ExitNothingToRemove = %d, want 4", ExitNothingToRemove)
+	}
 }

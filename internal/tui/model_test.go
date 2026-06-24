@@ -205,6 +205,35 @@ func TestApplyKeyOnHostScreensAppliesSelectedHost(t *testing.T) {
 	}
 }
 
+func TestUninstallKeyOnHostScreensTargetsSelectedHost(t *testing.T) {
+	// 'u' mirrors 'a': it suspends the TUI to uninstall the one selected host
+	// (the terminal flow then previews + confirms before removing anything).
+	for _, start := range []screen{screenHosts, screenHost} {
+		m := modelWithInventory(fixtureInventory())
+		m.current = start
+		m.selectedHost = 1
+		next, cmd := tea.Model(m).Update(key("u"))
+		rm := next.(rootModel)
+		if rm.exitAction != "uninstall-host" {
+			t.Errorf("'u' on %v: exitAction = %q, want uninstall-host", start, rm.exitAction)
+		}
+		if rm.exitHostIdx != 1 {
+			t.Errorf("'u' on %v: exitHostIdx = %d, want 1", start, rm.exitHostIdx)
+		}
+		if cmd == nil {
+			t.Errorf("'u' on %v should return tea.Quit", start)
+		}
+	}
+}
+
+func TestUninstallKeyIgnoredOffHostScreens(t *testing.T) {
+	m := modelWithInventory(fixtureInventory()) // current == Dashboard
+	next, _ := tea.Model(m).Update(key("u"))
+	if rm := next.(rootModel); rm.exitAction != "" {
+		t.Errorf("'u' on Dashboard set exitAction = %q, want empty", rm.exitAction)
+	}
+}
+
 func TestApplyKeyIgnoredOffHostScreens(t *testing.T) {
 	// Apply is host-scoped now — on the Dashboard (no unambiguous selected
 	// host) 'a' is a no-op, mirroring 's' and 'd'.
