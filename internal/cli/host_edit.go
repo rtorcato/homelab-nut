@@ -120,7 +120,14 @@ func finalizeHostChange(inv *inventory.Inventory, changed *inventory.Host, path,
 		return err
 	}
 	fmt.Fprintf(os.Stdout, "✓ Saved %s — host %q %s.\n", path, changed.Name, action)
-	return nil
+
+	// Apply the host now so the change actually takes effect. An unapplied
+	// host is just inert YAML — forgetting this step is the most common way
+	// a new host looks "broken". Scoped to this host (the full inventory is
+	// still loaded so cross-host roles resolve); --auto-approve since the
+	// user already confirmed the save.
+	fmt.Fprintf(os.Stdout, "\nApplying %s now…\n\n", changed.Name)
+	return runApply(os.Stdin, os.Stdout, os.Stderr, path, changed.Name, true, 0, outputText)
 }
 
 // printHostSummary renders a host's resolved fields, mirroring the TUI's
