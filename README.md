@@ -6,17 +6,21 @@
 
 ## Install
 
-Linux + macOS, x86_64 + arm64. Grab the [latest release](https://github.com/rtorcato/homelab-nut/releases/latest):
+Linux + macOS, x86_64 + arm64. Grab the [newest release](https://github.com/rtorcato/homelab-nut/releases):
 
 ```bash
 OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH=arm64
-curl -L "https://github.com/rtorcato/homelab-nut/releases/latest/download/homelab-nut_*_${OS}_${ARCH}.tar.gz" \
+# Resolve the newest release tag (pre-1.0 builds are pre-releases, which the
+# /releases/latest endpoint skips — so pull the tag from the API instead).
+TAG=$(curl -fsSL https://api.github.com/repos/rtorcato/homelab-nut/releases \
+  | grep -m1 '"tag_name"' | cut -d'"' -f4); VER=${TAG#v}
+curl -fL "https://github.com/rtorcato/homelab-nut/releases/download/${TAG}/homelab-nut_${VER}_${OS}_${ARCH}.tar.gz" \
   | tar -xz homelab-nut
 sudo install homelab-nut /usr/local/bin/
 homelab-nut version
 ```
 
-Homebrew tap + one-line `install.sh` land in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5).
+Once a stable (non-pre-release) `v1.0` ships, `…/releases/latest/download/…` will work directly. Homebrew tap + one-line `install.sh` land in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5).
 
 ### Build or run from source (development)
 
