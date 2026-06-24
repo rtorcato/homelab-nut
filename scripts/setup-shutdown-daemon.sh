@@ -20,6 +20,8 @@
 #                            command overrides; empty = none (all use the default)
 #   REMOTE_DELAYS_B64        base64 of newline-joined "DELAY_<host>=<seconds>" per-target
 #                            delays (daemon waits before that target); empty = none
+#   REMOTE_THRESHOLDS_B64    base64 of newline-joined "THRESHOLD_<host>=<pct>" per-target
+#                            battery thresholds (staged shutdown); empty = all use THRESHOLD
 #
 # Outputs the daemon's SSH public key on stdout so the caller can
 # distribute it to each shutdown-target's authorized_keys.
@@ -103,6 +105,17 @@ if [[ -n "$REMOTE_DELAYS_B64" ]]; then
     if [[ -n "$DECODED_DELAYS" ]]; then
         log "writing per-target shutdown delays"
         printf '%s\n' "$DECODED_DELAYS" >> "$CONF_DST"
+    fi
+fi
+# Per-target thresholds (THRESHOLD_<host>=pct). The daemon fires each target as
+# the UPS crosses its own threshold, so dependents can be staged (NAS sheds
+# early, router last). Targets without one inherit the global THRESHOLD.
+REMOTE_THRESHOLDS_B64="${REMOTE_THRESHOLDS_B64:-}"
+if [[ -n "$REMOTE_THRESHOLDS_B64" ]]; then
+    DECODED_THRESHOLDS="$(echo "$REMOTE_THRESHOLDS_B64" | base64 -d)"
+    if [[ -n "$DECODED_THRESHOLDS" ]]; then
+        log "writing per-target shutdown thresholds"
+        printf '%s\n' "$DECODED_THRESHOLDS" >> "$CONF_DST"
     fi
 fi
 # Group-readable by the service user so it can source the conf (which may hold

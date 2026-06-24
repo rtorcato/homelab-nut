@@ -127,6 +127,10 @@ func validateHost(v *ValidationError, h *Host, idx int) {
 		if h.Shutdown.Delay < 0 {
 			v.add(p("shutdown.delay"), fmt.Sprintf("%d must be zero or positive (seconds)", h.Shutdown.Delay))
 		}
+		// 0 = inherit the daemon's threshold; only a set value is range-checked.
+		if h.Shutdown.Threshold != 0 && (h.Shutdown.Threshold < 1 || h.Shutdown.Threshold > 99) {
+			v.add(p("shutdown.threshold"), fmt.Sprintf("%d is out of range (1-99)", h.Shutdown.Threshold))
+		}
 	}
 
 	// Per-host daemon override: validate its values, and flag it on a host

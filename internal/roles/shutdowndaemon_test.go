@@ -166,6 +166,81 @@ func TestRemoteDelaysFromInventory(t *testing.T) {
 	}
 }
 
+func TestRemoteThresholdsFromInventory(t *testing.T) {
+	cases := []struct {
+		name string
+		inv  *inventory.Inventory
+		want string
+	}{
+		{"nil", nil, ""},
+		{"empty", &inventory.Inventory{}, ""},
+		{
+			"target without threshold — inherits, no override",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff"}},
+			}},
+			"",
+		},
+		{
+			"zero threshold is skipped",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Threshold: 0}},
+			}},
+			"",
+		},
+		{
+			"set threshold emits THRESHOLD_ line",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Threshold: 60}},
+			}},
+			"THRESHOLD_10_0_10_125=60",
+		},
+		{
+			"staged fleet — inventory order, only targets with their own threshold",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "pi", User: "pi", Address: "192.0.2.10", Roles: []inventory.Role{inventory.RoleNUTServer, inventory.RoleShutdownDaemon}},
+				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Threshold: 60}},
+				{Name: "ws", User: "admin", Address: "192.0.2.20", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "~/shutdown.sh"}},
+				{Name: "router", User: "root", Address: "10.0.10.1", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Threshold: 20}},
+			}},
+			"THRESHOLD_10_0_10_125=60\nTHRESHOLD_10_0_10_1=20",
+		},
+	}
+	for _, tc := range cases {
+		if got := remoteThresholdsFromInventory(tc.inv); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestShutdownDaemon_PlanSurfacesPerTargetThresholds(t *testing.T) {
+	r := shutdownDaemon{}
+	daemonHost := inventory.Host{
+		Name: "pi", Address: "192.0.2.10", User: "pi",
+		Roles: []inventory.Role{inventory.RoleNUTServer, inventory.RoleShutdownDaemon},
+		UPS:   &inventory.UPS{Name: "myups", Driver: "usbhid-ups"},
+	}
+	nas := inventory.Host{
+		Name: "nas", Address: "10.0.10.125", User: "root",
+		Roles:    []inventory.Role{inventory.RoleShutdownTarget},
+		Shutdown: &inventory.Shutdown{Command: "poweroff", Threshold: 60},
+	}
+	inv := &inventory.Inventory{
+		Hosts:          []inventory.Host{daemonHost, nas},
+		ShutdownDaemon: &inventory.ShutdownDaemon{Threshold: 50, PollInterval: 30},
+	}
+	ctx := WithInventory(context.TODO(), inv)
+
+	d, err := r.Plan(ctx, nil, &daemonHost)
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	joined := strings.Join(d.Actions, "\n")
+	if !strings.Contains(joined, "THRESHOLD_10_0_10_125=60") {
+		t.Errorf("Plan should surface the per-target threshold override, got:\n%s", joined)
+	}
+}
+
 func TestUPSRefFromInventory(t *testing.T) {
 	cases := []struct {
 		name string

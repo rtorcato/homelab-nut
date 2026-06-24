@@ -9,12 +9,13 @@
 #
 # Configuration: /etc/ups-battery-shutdown.conf
 #   UPS=myups@localhost
-#   THRESHOLD=50
+#   THRESHOLD=50                                   (default; per-node THRESHOLD_ overrides it)
 #   REMOTE_NODES="user@host1 admin@unifi-device"   (space-separated)
 #   POLL_INTERVAL=30
 #   REMOTE_SHUTDOWN_CMD=~/shutdown.sh              (default for all nodes)
 #   CMD_unifi_device=poweroff                      (per-node override; hyphens→underscores)
 #   DELAY_unifi_device=60                          (per-node delay in seconds before sending)
+#   THRESHOLD_unifi_device=20                      (per-node battery %; staged shutdown)
 #
 # Per-node CMD overrides: UniFi devices don't persist scripts across firmware
 # updates, so set CMD_<hostname> to an inline command (e.g. poweroff) instead.
@@ -23,6 +24,11 @@
 # sending that node's command, so dependent devices can be sequenced — e.g.
 # give a NAS time to finish before powering off the gateway it talks through.
 #
+# Per-node THRESHOLD overrides: each node fires as the UPS crosses its own
+# THRESHOLD_<hostname> percent (staged shutdown — shed a NAS early at 60%,
+# the router last at 20%). Nodes without one use the global THRESHOLD. Each
+# node is fired at most once per outage (per-node lock files), cleared on OL.
+#
 set -euo pipefail
 
 DRY_RUN=0
@@ -30,8 +36,9 @@ DRY_RUN=0
 
 CONF="/etc/ups-battery-shutdown.conf"
 # systemd's RuntimeDirectory=ups-battery-shutdown creates /run/ups-battery-shutdown
-# owned by the service user, so the unprivileged daemon can write its lock here.
-LOCK_FILE="/run/ups-battery-shutdown/lock"
+# owned by the service user, so the unprivileged daemon can write its locks here.
+# One lock per node (lock-<sanitized-host>) so staged targets fire independently.
+LOCK_DIR="/run/ups-battery-shutdown"
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes"
 
 # Defaults (overridden by conf file)
@@ -88,7 +95,7 @@ fi
 
 log "UPS battery watcher started"
 log "  UPS:       $UPS"
-log "  Threshold: ${THRESHOLD}%"
+log "  Threshold: ${THRESHOLD}% (default; per-node THRESHOLD_ overrides apply)"
 log "  Nodes:     $REMOTE_NODES"
 log "  Interval:  ${POLL_INTERVAL}s"
 
@@ -109,26 +116,43 @@ while true; do
     fi
     FAIL_COUNT=0
 
-    # Clear lock when power is restored so future outages re-trigger
-    if [[ "$STATUS" == *"OL"* ]] && [[ -f "$LOCK_FILE" ]]; then
-        log "Power restored (OL) — clearing shutdown lock"
-        rm -f "$LOCK_FILE"
-        slack ":white_check_mark: *$(hostname)* — Power restored. UPS back on mains."
+    # Clear per-node locks when power is restored so future outages re-trigger.
+    if [[ "$STATUS" == *"OL"* ]]; then
+        if compgen -G "${LOCK_DIR}/lock-*" >/dev/null 2>&1; then
+            log "Power restored (OL) — clearing shutdown locks"
+            rm -f "${LOCK_DIR}"/lock-*
+            slack ":white_check_mark: *$(hostname)* — Power restored. UPS back on mains."
+        fi
     fi
 
-    if [[ "$STATUS" == *"OB"* ]] && [[ -n "$CHARGE" ]] && \
-       [[ "$CHARGE" -le "$THRESHOLD" ]] && [[ ! -f "$LOCK_FILE" ]]; then
-        touch "$LOCK_FILE"
-        log "Battery at ${CHARGE}% on battery (threshold: ${THRESHOLD}%) — sending remote shutdown"
-        slack ":warning: *$(hostname)* — Battery at *${CHARGE}%* (threshold: ${THRESHOLD}%). Shutting down: ${REMOTE_NODES}"
-
+    # Staged shutdown: on battery, walk every node and fire any whose own
+    # threshold the charge has now crossed and that hasn't fired this outage.
+    # Per-node lock files keep each node a one-shot until power is restored.
+    if [[ "$STATUS" == *"OB"* ]] && [[ -n "$CHARGE" ]]; then
         for NODE in $REMOTE_NODES; do
             HOST="${NODE##*@}"
             SANITIZED="${HOST//-/_}"; SANITIZED="${SANITIZED//\./_}"
+            NODE_THRESHOLD_VAR="THRESHOLD_${SANITIZED}"
+            NODE_THRESHOLD="${!NODE_THRESHOLD_VAR:-$THRESHOLD}"
+            NODE_LOCK="${LOCK_DIR}/lock-${SANITIZED}"
+
+            # Battery still above this node's threshold — leave it running.
+            if [[ "$CHARGE" -gt "$NODE_THRESHOLD" ]]; then
+                continue
+            fi
+            # Already fired this outage.
+            if [[ -f "$NODE_LOCK" ]]; then
+                continue
+            fi
+            touch "$NODE_LOCK"
+
             NODE_CMD_VAR="CMD_${SANITIZED}"
             NODE_CMD="${!NODE_CMD_VAR:-$REMOTE_SHUTDOWN_CMD}"
             NODE_DELAY_VAR="DELAY_${SANITIZED}"
             NODE_DELAY="${!NODE_DELAY_VAR:-0}"
+
+            log "Battery at ${CHARGE}% ≤ ${NODE_THRESHOLD}% — shutting down $NODE"
+            slack ":warning: *$(hostname)* — Battery at *${CHARGE}%* (≤ ${NODE_THRESHOLD}%). Shutting down: \`${NODE}\`"
 
             if [[ "$NODE_DELAY" -gt 0 ]]; then
                 log "→ Waiting ${NODE_DELAY}s before shutting down $NODE..."

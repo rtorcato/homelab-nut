@@ -138,6 +138,40 @@ func TestValidate_AcceptsShutdownDelay(t *testing.T) {
 	}
 }
 
+func TestValidate_PerTargetThresholdRange(t *testing.T) {
+	for _, bad := range []int{-1, 100, 150} {
+		inv := &Inventory{
+			Hosts: []Host{{
+				Name: "nas", Address: "10.0.10.125", User: "root",
+				Roles:    []Role{RoleShutdownTarget},
+				Shutdown: &Shutdown{Command: "poweroff", Threshold: bad},
+			}},
+		}
+		err := inv.Validate()
+		iss := pickFirstIssue(t, err, "hosts[0].shutdown.threshold")
+		if !strings.Contains(iss.Message, "out of range") {
+			t.Errorf("threshold %d: message = %q, want 'out of range'", bad, iss.Message)
+		}
+	}
+}
+
+func TestValidate_AcceptsPerTargetThreshold(t *testing.T) {
+	// A set, in-range threshold validates; an omitted (0) threshold inherits
+	// the daemon default and must not trip the range check.
+	for _, ok := range []int{0, 1, 60, 99} {
+		inv := &Inventory{
+			Hosts: []Host{{
+				Name: "nas", Address: "10.0.10.125", User: "root",
+				Roles:    []Role{RoleShutdownTarget},
+				Shutdown: &Shutdown{Command: "poweroff", Threshold: ok},
+			}},
+		}
+		if err := inv.Validate(); err != nil {
+			t.Fatalf("threshold %d should validate, got: %v", ok, err)
+		}
+	}
+}
+
 func TestValidate_PerHostShutdownDaemonRange(t *testing.T) {
 	inv := &Inventory{
 		Hosts: []Host{{

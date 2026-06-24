@@ -74,9 +74,15 @@ type UPS struct {
 // Delay is how many seconds the daemon waits before sending this target's
 // shutdown — used to sequence dependent devices, e.g. give a NAS time to
 // finish before powering off the gateway it talks through. 0 = no wait.
+//
+// Threshold is the per-target battery % at which the daemon fires this
+// target's shutdown, enabling staged shutdown across the fleet (NAS sheds
+// early at 60%, the router last at 20%). 0 = inherit the daemon's threshold
+// (per-host override → fleet default → built-in 50%).
 type Shutdown struct {
-	Command string `yaml:"command"           json:"command"`
-	Delay   int    `yaml:"delay,omitempty"   json:"delay,omitempty"`
+	Command   string `yaml:"command"             json:"command"`
+	Delay     int    `yaml:"delay,omitempty"     json:"delay,omitempty"`
+	Threshold int    `yaml:"threshold,omitempty" json:"threshold,omitempty"`
 }
 
 // ShutdownDaemon configures the battery-shutdown daemon. It can be set
