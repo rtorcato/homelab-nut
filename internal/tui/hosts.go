@@ -78,6 +78,9 @@ func (m rootModel) hostRoleLines(h inventory.Host, rowByHost map[string]upspoll.
 			summary := "shutdown-target"
 			if h.Shutdown != nil && h.Shutdown.Command != "" {
 				summary = fmt.Sprintf("shutdown-target (%s)", truncateCommand(h.Shutdown.Command, maxRoleCommandLen))
+				if h.Shutdown.Delay > 0 {
+					summary = fmt.Sprintf("shutdown-target (%s, +%ds)", truncateCommand(h.Shutdown.Command, maxRoleCommandLen), h.Shutdown.Delay)
+				}
 			}
 			lines = append(lines, roleLine{summary: summary, state: "configured"})
 		default:

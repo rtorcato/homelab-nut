@@ -151,7 +151,11 @@ func printHostSummary(w io.Writer, h *inventory.Host) {
 		fmt.Fprintf(w, "  ups:      name=%s driver=%s\n", h.UPS.Name, h.UPS.Driver)
 	}
 	if h.Shutdown != nil {
-		fmt.Fprintf(w, "  shutdown: %s\n", h.Shutdown.Command)
+		fmt.Fprintf(w, "  shutdown: %s", h.Shutdown.Command)
+		if h.Shutdown.Delay > 0 {
+			fmt.Fprintf(w, " (after %ds)", h.Shutdown.Delay)
+		}
+		fmt.Fprintln(w)
 	}
 	if d := h.ShutdownDaemon; d != nil {
 		fmt.Fprintf(w, "  daemon:   threshold=%d%% poll=%ds", d.Threshold, d.PollInterval)

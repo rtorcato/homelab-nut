@@ -221,6 +221,10 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string, detect Drive
 		if sd == nil {
 			sd = &inventory.Shutdown{Command: "~/shutdown.sh"}
 		}
+		delayStr := ""
+		if sd.Delay > 0 {
+			delayStr = strconv.Itoa(sd.Delay)
+		}
 		if err := huh.NewForm(huh.NewGroup(
 			huh.NewNote().
 				Title(fmt.Sprintf("Shutdown command for %s", host.Name)).
@@ -230,8 +234,17 @@ func collectRoleDetails(host *inventory.Host, roleStrings []string, detect Drive
 				Description("Path → wrapped in nohup over SSH. Bare command (e.g. `poweroff`) → sent inline.").
 				Value(&sd.Command).
 				Validate(RequireNonEmpty("shutdown.command")),
+			huh.NewInput().
+				Title("Delay before shutdown (seconds, optional)").
+				Description("Wait this long before sending the command — e.g. let a NAS finish before the gateway it talks through powers off. Blank or 0 = no wait.").
+				Value(&delayStr).
+				Validate(NonNegativeIntOrEmpty("shutdown.delay")),
 		)).WithKeyMap(cancelKeyMap()).Run(); err != nil {
 			return nil, err
+		}
+		sd.Delay = 0
+		if s := strings.TrimSpace(delayStr); s != "" {
+			sd.Delay, _ = strconv.Atoi(s)
 		}
 		host.Shutdown = sd
 	} else {
@@ -382,6 +395,22 @@ func IntMin(field string, lo int) func(string) error {
 		}
 		if n < lo {
 			return fmt.Errorf("%s must be at least %d", field, lo)
+		}
+		return nil
+	}
+}
+
+// NonNegativeIntOrEmpty validates an optional whole-second field: empty is
+// allowed (treated as 0 by the caller), otherwise it must be an integer >= 0.
+func NonNegativeIntOrEmpty(field string) func(string) error {
+	return func(s string) error {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return nil
+		}
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 0 {
+			return fmt.Errorf("%s must be a non-negative number of seconds", field)
 		}
 		return nil
 	}

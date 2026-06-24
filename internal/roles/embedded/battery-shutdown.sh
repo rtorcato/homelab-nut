@@ -14,9 +14,14 @@
 #   POLL_INTERVAL=30
 #   REMOTE_SHUTDOWN_CMD=~/shutdown.sh              (default for all nodes)
 #   CMD_unifi_device=poweroff                      (per-node override; hyphens→underscores)
+#   DELAY_unifi_device=60                          (per-node delay in seconds before sending)
 #
 # Per-node CMD overrides: UniFi devices don't persist scripts across firmware
 # updates, so set CMD_<hostname> to an inline command (e.g. poweroff) instead.
+#
+# Per-node DELAY overrides: the daemon waits DELAY_<hostname> seconds before
+# sending that node's command, so dependent devices can be sequenced — e.g.
+# give a NAS time to finish before powering off the gateway it talks through.
 #
 set -euo pipefail
 
@@ -122,6 +127,13 @@ while true; do
             SANITIZED="${HOST//-/_}"; SANITIZED="${SANITIZED//\./_}"
             NODE_CMD_VAR="CMD_${SANITIZED}"
             NODE_CMD="${!NODE_CMD_VAR:-$REMOTE_SHUTDOWN_CMD}"
+            NODE_DELAY_VAR="DELAY_${SANITIZED}"
+            NODE_DELAY="${!NODE_DELAY_VAR:-0}"
+
+            if [[ "$NODE_DELAY" -gt 0 ]]; then
+                log "→ Waiting ${NODE_DELAY}s before shutting down $NODE..."
+                [[ "$DRY_RUN" -ne 1 ]] && sleep "$NODE_DELAY"
+            fi
 
             log "→ Shutting down $NODE via SSH (cmd: $NODE_CMD)..."
 

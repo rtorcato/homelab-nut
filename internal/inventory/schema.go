@@ -70,8 +70,13 @@ type UPS struct {
 // Shutdown is per-host shutdown configuration for shutdown-target hosts.
 // Command can be either a script path (`~/shutdown.sh` — wrapped in nohup
 // over SSH) or an inline command (`poweroff` — sent directly).
+//
+// Delay is how many seconds the daemon waits before sending this target's
+// shutdown — used to sequence dependent devices, e.g. give a NAS time to
+// finish before powering off the gateway it talks through. 0 = no wait.
 type Shutdown struct {
-	Command string `yaml:"command" json:"command"`
+	Command string `yaml:"command"           json:"command"`
+	Delay   int    `yaml:"delay,omitempty"   json:"delay,omitempty"`
 }
 
 // ShutdownDaemon configures the battery-shutdown daemon. It can be set

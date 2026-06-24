@@ -436,7 +436,11 @@ func (m rootModel) viewHost() string {
 		row("ups", fmt.Sprintf("name=%s driver=%s", h.UPS.Name, h.UPS.Driver))
 	}
 	if h.Shutdown != nil {
-		row("shutdown", h.Shutdown.Command)
+		val := h.Shutdown.Command
+		if h.Shutdown.Delay > 0 {
+			val = fmt.Sprintf("%s (after %ds)", h.Shutdown.Command, h.Shutdown.Delay)
+		}
+		row("shutdown", val)
 	}
 	return bodyStyle.Render(b.String())
 }

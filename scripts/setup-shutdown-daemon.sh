@@ -18,6 +18,8 @@
 #   SLACK_WEBHOOK            empty = Slack disabled
 #   REMOTE_CMDS_B64          base64 of newline-joined "CMD_<host>=<cmd>" per-target
 #                            command overrides; empty = none (all use the default)
+#   REMOTE_DELAYS_B64        base64 of newline-joined "DELAY_<host>=<seconds>" per-target
+#                            delays (daemon waits before that target); empty = none
 #
 # Outputs the daemon's SSH public key on stdout so the caller can
 # distribute it to each shutdown-target's authorized_keys.
@@ -90,6 +92,17 @@ if [[ -n "$REMOTE_CMDS_B64" ]]; then
     if [[ -n "$DECODED_CMDS" ]]; then
         log "writing per-target command overrides"
         printf '%s\n' "$DECODED_CMDS" >> "$CONF_DST"
+    fi
+fi
+# Per-target delays (DELAY_<host>=seconds). The daemon sleeps this long before
+# sending the target's command, so dependent devices can be sequenced (e.g.
+# let a NAS finish before powering off the gateway it talks through).
+REMOTE_DELAYS_B64="${REMOTE_DELAYS_B64:-}"
+if [[ -n "$REMOTE_DELAYS_B64" ]]; then
+    DECODED_DELAYS="$(echo "$REMOTE_DELAYS_B64" | base64 -d)"
+    if [[ -n "$DECODED_DELAYS" ]]; then
+        log "writing per-target shutdown delays"
+        printf '%s\n' "$DECODED_DELAYS" >> "$CONF_DST"
     fi
 fi
 # Group-readable by the service user so it can source the conf (which may hold
