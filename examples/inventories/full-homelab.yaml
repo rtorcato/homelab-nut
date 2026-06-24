@@ -1,0 +1,78 @@
+# full homelab — every role, two UPSes.
+#
+# Two separate UPSes, each with its own NUT server + battery-watch daemon, plus
+# a network client and two SSH shutdown-targets. Demonstrates the per-host vs
+# fleet-wide shutdown_daemon precedence and the Prometheus exporter.
+#
+#   rack-pi   : UPS #1 (cyberpower). nut-server + exporter + shutdown-daemon,
+#               with its OWN daemon tuning (threshold 40 — small UPS, act early).
+#   nas-host  : UPS #2 (apc). nut-server + exporter + shutdown-daemon, inheriting
+#               the fleet-wide default below (no per-host block).
+#   desktop   : nut-client — no UPS, watches a server's UPS over the network.
+#   nas       : shutdown-target (inline poweroff).
+#   gateway   : shutdown-target, delay 90 so everything else powers off first.
+#
+# shutdown_daemon precedence: a host's own block wins; otherwise the root-level
+# block below applies; otherwise the built-in 50% / 30s.
+#
+# The exporter role publishes Prometheus metrics — see docs/prometheus-grafana.md
+# and examples/grafana/ for a ready-made dashboard.
+#
+# Validate:  homelab-nut inventory validate -i examples/inventories/full-homelab.yaml
+
+hosts:
+  - name: rack-pi
+    address: 192.0.2.10
+    user: pi
+    roles:
+      - nut-server
+      - exporter
+      - shutdown-daemon
+    ups:
+      name: cyberpower
+      driver: usbhid-ups
+    shutdown_daemon:           # per-host override — small UPS, shut down earlier
+      threshold: 40
+      poll_interval: 20
+
+  - name: nas-host
+    address: 192.0.2.11
+    user: admin
+    roles:
+      - nut-server
+      - exporter
+      - shutdown-daemon
+    ups:
+      name: apc
+      driver: usbhid-ups
+    # No per-host shutdown_daemon -> inherits the fleet-wide default below.
+
+  - name: desktop
+    address: 192.0.2.20
+    user: admin
+    roles:
+      - nut-client             # watches a server's UPS over the network; self-shuts
+
+  - name: nas
+    address: 192.0.2.30
+    user: root
+    roles:
+      - shutdown-target
+    shutdown:
+      command: poweroff
+
+  - name: gateway
+    address: 192.0.2.1
+    user: root
+    roles:
+      - shutdown-target
+    shutdown:
+      command: poweroff
+      delay: 90                # gateway goes last, after the others are down
+
+# Fleet-wide default for any shutdown-daemon host without its own block (nas-host).
+# Set the named env var in the daemon's environment to enable Slack notifications.
+shutdown_daemon:
+  threshold: 50
+  poll_interval: 30
+  slack_webhook_env: SLACK_WEBHOOK

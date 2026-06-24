@@ -1,0 +1,32 @@
+# server + network client — one UPS, two machines.
+#
+# `server` has the UPS physically attached (nut-server role). `workstation`
+# has NO UPS of its own but is powered by the same UPS; it runs the nut-client
+# role, which points upsmon at the server over the network and shuts the
+# workstation down when the server reports low battery.
+#
+# Rule of thumb:
+#   - the machine the UPS is plugged into   -> nut-server (+ ups block)
+#   - other machines on that same UPS        -> nut-client (no ups block)
+#
+# The client resolves which server to watch from the inventory (the nut-server
+# host), so there's nothing extra to configure on it.
+#
+# Validate:  homelab-nut inventory validate -i examples/inventories/server-and-client.yaml
+
+hosts:
+  - name: server
+    address: 192.0.2.10
+    user: admin
+    roles:
+      - nut-server             # owns the UPS; serves its status over the network
+    ups:
+      name: myups
+      driver: usbhid-ups
+
+  - name: workstation
+    address: 192.0.2.20
+    user: admin
+    roles:
+      - nut-client             # watches server's UPS over the network; self-shuts down
+    # No `ups:` block — a client doesn't own a UPS, it listens to the server's.

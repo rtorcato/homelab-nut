@@ -1,0 +1,55 @@
+# SSH shutdown targets — power down appliances that can't run NUT.
+#
+# Some devices (a NAS, a UniFi gateway) can't run upsmon themselves. Instead,
+# the `shutdown-daemon` on the NUT server watches the battery and SSHes a
+# shutdown command into each `shutdown-target` host when the battery hits the
+# threshold.
+#
+#   server  : owns the UPS, exposes Prometheus metrics, and runs the daemon.
+#   nas     : shutdown-target — powered off with an inline `poweroff` over SSH.
+#   gateway : shutdown-target — powered off LAST (delay: 60) so the NAS finishes
+#             shutting down before the network gateway it talks through dies.
+#
+# Inline `command: poweroff` (vs a `~/shutdown.sh` script path) suits appliances
+# like UniFi OS that wipe the home dir on firmware updates.
+#
+# After `apply`, the daemon prints its SSH public key — add it to each target's
+# ~/.ssh/authorized_keys for the user shown here (root). UniFi devices wipe
+# authorized_keys on firmware updates, so you may need to re-add it afterwards.
+#
+# Validate:  homelab-nut inventory validate -i examples/inventories/ssh-shutdown-targets.yaml
+
+hosts:
+  - name: server
+    address: 192.0.2.10
+    user: admin
+    roles:
+      - nut-server
+      - exporter               # exposes Prometheus metrics for the UPS
+      - shutdown-daemon        # watches battery %; SSHes shutdowns to the targets
+    ups:
+      name: myups
+      driver: usbhid-ups
+
+  - name: nas
+    address: 192.0.2.30
+    user: root
+    roles:
+      - shutdown-target
+    shutdown:
+      command: poweroff        # inline command, sent over SSH at trigger time
+
+  - name: gateway
+    address: 192.0.2.1
+    user: root
+    roles:
+      - shutdown-target
+    shutdown:
+      command: poweroff
+      delay: 60                # wait 60s before this one — let the NAS finish first
+
+# Battery-watch tuning for the daemon. Omit the whole block to use the built-in
+# 50% / 30s defaults.
+shutdown_daemon:
+  threshold: 50                # shut down when battery drops below 50% on battery
+  poll_interval: 30            # check the UPS every 30 seconds
