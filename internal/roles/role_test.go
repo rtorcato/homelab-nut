@@ -87,6 +87,10 @@ func (stubRole) Apply(context.Context, *ssh.Connection, *inventory.Host, io.Writ
 	return nil
 }
 
+func (stubRole) Uninstall(context.Context, *ssh.Connection, *inventory.Host, UninstallParams, io.Writer) (*Removal, error) {
+	return &Removal{}, nil
+}
+
 // resetRegistry empties the package-level registry so registry tests
 // don't bleed into production data. Used inside test helpers only.
 func resetRegistry(t *testing.T) {

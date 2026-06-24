@@ -101,6 +101,21 @@ func runApplyHost(path string, idx int) error {
 	return runApply(os.Stdin, os.Stdout, os.Stderr, path, inv.Hosts[idx].Name, true, 0, outputText)
 }
 
+// runUninstallHost is the TUI 'u' entry point: uninstall a single host
+// interactively. autoApprove is false so the terminal shows the preview and
+// a y/N confirm before removing; purge stays off (the upstream NUT package
+// is kept — `--purge-nut` is a deliberate CLI-only choice, see uninstall.go).
+func runUninstallHost(path string, idx int) error {
+	inv, err := inventory.Load(path)
+	if err != nil {
+		return err
+	}
+	if idx < 0 || idx >= len(inv.Hosts) {
+		return fmt.Errorf("host index %d out of range (have %d hosts)", idx, len(inv.Hosts))
+	}
+	return runUninstall(os.Stdin, os.Stdout, os.Stderr, path, inv.Hosts[idx].Name, false, "all", false, false, 0, outputText)
+}
+
 // finalizeHostChange shows a summary of the affected host and saves only
 // after the user confirms. A shutdown-daemon host's battery-watch tuning is
 // collected inline in the wizard (forms.collectRoleDetails), so there's no

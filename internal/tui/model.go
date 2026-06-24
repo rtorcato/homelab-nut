@@ -234,6 +234,18 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	case "u", "U":
+		// Uninstall the selected host (suspends the TUI like apply). The
+		// terminal flow shows a preview + y/N confirm before removing, and
+		// leaves the upstream NUT package in place — `--purge-nut` is a
+		// deliberate CLI-only escape hatch, too destructive for a hotkey.
+		if (m.current == screenHosts || m.current == screenHost) &&
+			m.inv != nil && m.selectedHost < len(m.inv.Hosts) {
+			m.exitAction = "uninstall-host"
+			m.exitHostIdx = m.selectedHost
+			return m, tea.Quit
+		}
+		return m, nil
 	case "o", "O":
 		openURL("https://github.com/rtorcato/homelab-nut")
 		return m, nil
@@ -364,10 +376,10 @@ func (m rootModel) renderStatusBar() string {
 		hints = append([]string{"↑↓ select", "enter drill in", "n add host"}, hints...)
 	}
 	if m.current == screenHosts {
-		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS", "a apply"}, hints...)
+		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS", "a apply", "u uninstall"}, hints...)
 	}
 	if m.current == screenHost {
-		hints = append([]string{"n add", "e edit", "s scan UPS", "a apply"}, hints...)
+		hints = append([]string{"n add", "e edit", "s scan UPS", "a apply", "u uninstall"}, hints...)
 	}
 	return statusBarStyle.Render(strings.Join(hints, " · "))
 }
@@ -479,6 +491,7 @@ func (m rootModel) viewHelp() string {
 		{"d", "delete selected host (Hosts screen)"},
 		{"s", "scan selected nut-server host for its UPS"},
 		{"a", "apply selected host over SSH (Hosts/detail)"},
+		{"u", "uninstall selected host (preview + confirm; NUT package kept)"},
 		{"r / R", "refresh live UPS state now (Dashboard)"},
 		{"i", "set up inventory (empty-state Dashboard only)"},
 		{"o", "open the project page in your browser"},

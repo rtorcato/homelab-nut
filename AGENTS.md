@@ -22,6 +22,7 @@ For humans, the TUI is the front door: run `homelab-nut` and follow the keybindi
 | `1` | Validation / config error (user-fixable: bad YAML, missing field, etc.) | No — fix the input first |
 | `2` | Network / SSH error (unreachable host, auth fail, mid-command drop) | Yes — usually transient |
 | `3` | Apply partial failure (some hosts OK, some failed) | Maybe — inspect the per-host result; failed hosts may need a fix |
+| `4` | Uninstall ran cleanly but removed nothing (every artifact already absent) | No — already in the desired state |
 
 Defined in `internal/cli/exit.go` and locked in by `TestExitCodesAreStable`.
 
@@ -196,6 +197,34 @@ $ homelab-nut apply --auto-approve -o json
 - **Per-role output:** in text mode, streamed with `[host/role]` prefix as roles run. In JSON mode, role output is captured but not surfaced in the summary (the orchestrator writes to `io.Discard`) — the `result.hosts[].errors` array carries the failure detail.
 - **Exit:** 0 success, 1 plan-time validation error, 3 apply partial failure.
 - **Flags:** `--auto-approve/-y`, `--concurrency N` (max parallel hosts; 0 = unlimited), `--host NAME` (apply only that host — the full inventory is still loaded so cross-host roles like nut-client resolve their dependencies; the result contains just that host).
+
+### `homelab-nut uninstall [host]`
+
+The inverse of `apply`: removes homelab-nut's own artifacts (the `nut-exporter` and `ups-battery-shutdown` systemd units + binaries + config, and the shutdown-target sudoers rule + `~/shutdown.sh`) in reverse role order. The upstream NUT package is **left alone** unless you pass `--purge-nut`. Same `--auto-approve` / JSON gating as `apply`, and idempotent (re-running reports everything as `skipped`).
+
+**Safety:** running with neither a host argument nor `--all` is refused — you must name a host or opt into the whole fleet explicitly.
+
+```
+$ homelab-nut uninstall pi-rack --auto-approve -o json
+{
+  "elapsed": "3s",
+  "removed": 4,
+  "failed": 0,
+  "results": [
+    {
+      "host": "pi-rack",
+      "removed": ["unit nut-exporter.service", "/usr/local/bin/nut_exporter", "/etc/default/nut-exporter", "unit ups-battery-shutdown.service"],
+      "skipped": ["upstream NUT package + /etc/nut (pass --purge-nut to remove)"],
+      "errors": []
+    }
+  ]
+}
+```
+
+- **JSON schema:** `{ elapsed: string, removed: int, failed: int, results: [ { host: string, removed: []string, skipped: []string, errors: []string } ] }`
+- **`removed`/`skipped`** are flattened across all of a host's roles. `removed` lists what was actually present and deleted; `skipped` lists what was already absent (or gated behind `--purge-nut`).
+- **Exit:** 0 success, 1 validation error, 3 partial failure (a host errored mid-removal), **4 nothing-to-remove** (ran cleanly but every artifact was already gone).
+- **Flags:** `--all` (whole fleet), `--role nut-server|nut-client|exporter|shutdown-daemon|shutdown-target|all` (default `all`), `--purge-nut` (also apt-purge NUT + delete `/etc/nut` — destructive), `--auto-approve/-y`, `--concurrency N`.
 
 ### `homelab-nut status`
 

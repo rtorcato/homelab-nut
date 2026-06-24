@@ -282,3 +282,15 @@ func (r shutdownDaemon) Apply(ctx context.Context, conn *ssh.Connection, h *inve
 	}
 	return nil
 }
+
+// Uninstall removes the battery-shutdown systemd unit, its binary, and its
+// config file. The dedicated homelab-nut service user and its SSH key under
+// /var/lib/homelab-nut are left in place — they're login-less and may be
+// shared with a future re-apply (a fresh key would otherwise need
+// redistributing to every target's authorized_keys again).
+func (shutdownDaemon) Uninstall(ctx context.Context, conn *ssh.Connection, h *inventory.Host, _ UninstallParams, out io.Writer) (*Removal, error) {
+	return removeArtifacts(ctx, conn, "shutdown-daemon", out,
+		[]string{"ups-battery-shutdown.service"},
+		[]string{"/usr/local/bin/ups-battery-shutdown", "/etc/ups-battery-shutdown.conf"},
+		nil)
+}
