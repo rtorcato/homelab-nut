@@ -86,7 +86,7 @@ func (r nutServer) Plan(ctx context.Context, conn *ssh.Connection, h *inventory.
 	}
 	d.Actions = []string{
 		"install nut-server, nut-driver, nut-client, upsmon (apt)",
-		fmt.Sprintf("configure ups.conf for UPS %q (driver %s)", h.UPS.Name, h.UPS.Driver),
+		fmt.Sprintf("configure ups.conf for UPS %q (driver %s, auto-detected via nut-scanner when possible)", h.UPS.Name, h.UPS.Driver),
 		"generate /root/nut-credentials.txt + upsd.users (random passwords)",
 		"enable + start nut-server, nut-driver, nut-client systemd units",
 	}
