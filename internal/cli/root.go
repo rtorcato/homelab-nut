@@ -2,8 +2,10 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -114,13 +116,27 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 				fmt.Fprintf(cmd.ErrOrStderr(), "delete host failed: %v\n", err)
 			}
 		case "detect-host":
+			fmt.Fprintln(cmd.OutOrStdout(), "Scanning host for connected UPS over SSH (nut-scanner)…")
 			if err := runDetectHost(cmd.OutOrStdout(), cmd.ErrOrStderr(), path, tui.ExitHostIndex(finalModel)); err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "detect failed: %v\n", err)
 			}
+			// The scan prints its result to the normal screen, but the TUI
+			// is about to relaunch in the alt screen and wipe it. Hold here
+			// so the user can actually read what was detected.
+			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		default:
 			return nil
 		}
 	}
+}
+
+// pauseForReturn prints a prompt and blocks until the user presses Enter.
+// Used between a non-interactive TUI action (like a UPS scan) and the TUI
+// relaunch, which enters the alt screen and would otherwise instantly wipe
+// the action's printed output before it can be read.
+func pauseForReturn(in io.Reader, out io.Writer) {
+	fmt.Fprint(out, "\nPress Enter to return to homelab-nut… ")
+	_, _ = bufio.NewReader(in).ReadString('\n')
 }
 
 // openEditor opens $EDITOR (default vi) on path, then re-loads +
