@@ -227,6 +227,18 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	case "s", "S":
+		// Scan the selected host for its UPS (nut-scanner over SSH) and
+		// write the detected driver back. Only meaningful for a nut-server
+		// host on the Hosts list or its detail screen.
+		if (m.current == screenHosts || m.current == screenHost) &&
+			m.inv != nil && m.selectedHost < len(m.inv.Hosts) &&
+			m.inv.Hosts[m.selectedHost].HasRole(inventory.RoleNUTServer) {
+			m.exitAction = "detect-host"
+			m.exitHostIdx = m.selectedHost
+			return m, tea.Quit
+		}
+		return m, nil
 	case "o", "O":
 		openURL("https://github.com/rtorcato/homelab-nut")
 		return m, nil
@@ -363,10 +375,10 @@ func (m rootModel) renderStatusBar() string {
 		hints = append([]string{"↑↓ select", "enter drill in"}, hints...)
 	}
 	if m.current == screenHosts {
-		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete"}, hints...)
+		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS"}, hints...)
 	}
 	if m.current == screenHost {
-		hints = append([]string{"e edit"}, hints...)
+		hints = append([]string{"e edit", "s scan UPS"}, hints...)
 	}
 	if m.current == screenApply && m.apply.status != applyRunning {
 		hints = append([]string{"a apply"}, hints...)
@@ -452,6 +464,7 @@ func (m rootModel) viewHelp() string {
 		{"n", "add a new host (Hosts screen)"},
 		{"e", "edit selected host (Hosts/detail) · else $EDITOR"},
 		{"d", "delete selected host (Hosts screen)"},
+		{"s", "scan selected nut-server host for its UPS"},
 		{"r / R", "refresh live UPS state now (Dashboard)"},
 		{"i", "set up inventory (empty-state Dashboard only)"},
 		{"a / A", "run apply (any screen)"},

@@ -67,6 +67,7 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 	cmd.AddCommand(newPlanCmd())
 	cmd.AddCommand(newApplyCmd())
 	cmd.AddCommand(newStatusCmd())
+	cmd.AddCommand(newDetectCmd())
 
 	return cmd
 }
@@ -111,6 +112,10 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 		case "delete-host":
 			if err := runDeleteHost(path, tui.ExitHostIndex(finalModel)); err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "delete host failed: %v\n", err)
+			}
+		case "detect-host":
+			if err := runDetectHost(cmd.OutOrStdout(), cmd.ErrOrStderr(), path, tui.ExitHostIndex(finalModel)); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "detect failed: %v\n", err)
 			}
 		default:
 			return nil
