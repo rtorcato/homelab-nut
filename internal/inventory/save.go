@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -16,7 +17,13 @@ func (inv *Inventory) Save(path string) error {
 		return err
 	}
 
-	tmp, err := os.CreateTemp(".", ".homelab-nut.yaml.*")
+	// Create the temp file in the *destination's* directory, not the
+	// current working directory: os.Rename can't move across filesystems
+	// (EXDEV "cross-device link"), which happens whenever the CWD and the
+	// inventory live on different volumes (e.g. running from an external
+	// SSD while the inventory is in $HOME).
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".homelab-nut.yaml.*")
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
