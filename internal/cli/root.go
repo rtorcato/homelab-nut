@@ -70,6 +70,7 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 	cmd.AddCommand(newApplyCmd())
 	cmd.AddCommand(newStatusCmd())
 	cmd.AddCommand(newDetectCmd())
+	cmd.AddCommand(newLogsCmd())
 
 	return cmd
 }
