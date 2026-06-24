@@ -14,7 +14,7 @@ import (
 )
 
 func newInitCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Generate homelab-nut.yaml interactively",
 		Long: `Walks through a guided form, then writes the resulting inventory.
@@ -28,12 +28,15 @@ use whichever fits your context.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := inventoryPath(cmd)
-			return runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path)
+			noApply, _ := cmd.Flags().GetBool("no-apply")
+			return runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path, noApply)
 		},
 	}
+	cmd.Flags().Bool("no-apply", false, "write the inventory but don't apply it (generate only — run apply later)")
+	return cmd
 }
 
-func runInit(_ io.Reader, stdout, stderr io.Writer, path string) error {
+func runInit(stdin io.Reader, stdout, stderr io.Writer, path string, noApply bool) error {
 	// 1. Handle existing file: confirm before clobbering.
 	if _, err := os.Stat(path); err == nil {
 		overwrite, err := forms.ConfirmOverwrite(path)
@@ -101,5 +104,18 @@ func runInit(_ io.Reader, stdout, stderr io.Writer, path string) error {
 		return err
 	}
 	fmt.Fprintf(stdout, "Wrote %s — run `homelab-nut inventory list` to confirm.\n", path)
-	return nil
+
+	// Apply the new inventory now so the setup actually takes effect — an
+	// unapplied inventory is just inert YAML. onlyHost="" applies every host
+	// we just created (cross-host roles need the server host present, so one
+	// apply at the end beats per-host-as-you-go); --auto-approve since the
+	// user already confirmed the save above. --no-apply opts out for the
+	// generate-only case (hosts not reachable yet, or review-before-apply).
+	if noApply {
+		fmt.Fprintln(stdout, "Skipped apply (--no-apply). Run `homelab-nut apply` when ready.")
+		return nil
+	}
+	fmt.Fprintln(stdout, "\nApplying the new inventory now…")
+	fmt.Fprintln(stdout)
+	return runApply(stdin, stdout, stderr, path, "", true, 0, outputText)
 }

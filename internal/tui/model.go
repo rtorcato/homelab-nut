@@ -6,11 +6,9 @@
 package tui
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -24,7 +22,6 @@ const (
 	screenDashboard screen = iota
 	screenHosts
 	screenHost
-	screenApply
 	screenHelp
 )
 
@@ -36,8 +33,6 @@ func (s screen) String() string {
 		return "Hosts"
 	case screenHost:
 		return "Host"
-	case screenApply:
-		return "Apply"
 	case screenHelp:
 		return "Help"
 	}
@@ -46,7 +41,7 @@ func (s screen) String() string {
 
 // tabOrder is the navigation order for tab / shift+tab and number keys.
 // screenHost isn't in the tab bar — you reach it by pressing enter on Hosts.
-var tabOrder = []screen{screenDashboard, screenHosts, screenApply, screenHelp}
+var tabOrder = []screen{screenDashboard, screenHosts, screenHelp}
 
 // New returns the root Bubble Tea model.
 //
@@ -79,7 +74,6 @@ type rootModel struct {
 	// Moving it keeps selectedHost in sync so focus carries between the
 	// Dashboard and Hosts tabs.
 	dashSelected int
-	apply        applyState
 	dashboard    dashboardState
 	// exitAction is set by 'i'/'e'/'n'/'d' keys before tea.Quit, so the
 	// wrapping cobra command can dispatch a follow-up action (run init
@@ -129,19 +123,6 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
-	case applyCompleteMsg:
-		m.apply.elapsed = time.Since(m.apply.startedAt)
-		m.apply.result = msg.result
-		if msg.err != nil {
-			m.apply.status = applyFailed
-			m.apply.err = msg.err
-		} else {
-			m.apply.status = applyDone
-		}
-		if m.apply.logBuf != nil {
-			m.apply.logBuf.WriteString(msg.logs)
-		}
-		return m, nil
 	case dashboardTickMsg:
 		// Don't pile up overlapping polls if the previous one is still
 		// running — just rearm the tick. Per-host timeouts inside the
@@ -170,9 +151,7 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 	case "esc":
-		// Back out one level toward the Dashboard. A running apply keeps
-		// going in the background — esc just changes the view; come back
-		// with '3' to see the result.
+		// Back out one level toward the Dashboard.
 		switch m.current {
 		case screenHost:
 			m.current = screenHosts
@@ -194,31 +173,9 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "2":
 		m.current = screenHosts
 		return m, nil
-	case "3":
-		m.current = screenApply
-		return m, nil
-	case "4", "?":
+	case "3", "?":
 		m.current = screenHelp
 		return m, nil
-	case "a", "A":
-		if m.apply.status == applyRunning || m.inv == nil || len(m.inv.Hosts) == 0 {
-			return m, nil
-		}
-		// Context-aware target: on the Hosts list or a host's detail screen,
-		// apply just the selected host. Everywhere else (Dashboard, Apply,
-		// Help) apply the whole fleet.
-		onlyHost := ""
-		if (m.current == screenHosts || m.current == screenHost) && m.selectedHost < len(m.inv.Hosts) {
-			onlyHost = m.inv.Hosts[m.selectedHost].Name
-		}
-		m.current = screenApply
-		m.apply = applyState{
-			status:    applyRunning,
-			startedAt: time.Now(),
-			logBuf:    new(bytes.Buffer),
-			onlyHost:  onlyHost,
-		}
-		return m, startApply(m.inv, onlyHost)
 	case "i", "I":
 		// init flow is only meaningful when there's no usable inventory —
 		// otherwise the user should use `e` to edit. Refuse to trigger
@@ -261,6 +218,18 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inv != nil && m.selectedHost < len(m.inv.Hosts) &&
 			m.inv.Hosts[m.selectedHost].HasRole(inventory.RoleNUTServer) {
 			m.exitAction = "detect-host"
+			m.exitHostIdx = m.selectedHost
+			return m, tea.Quit
+		}
+		return m, nil
+	case "a", "A":
+		// Apply just the selected host over SSH (suspends the TUI, like 'e'
+		// and 's'). Apply otherwise happens only as the tail of the
+		// add/edit/init wizards — this is the shortcut to converge a host in
+		// place without clicking back through the edit form.
+		if (m.current == screenHosts || m.current == screenHost) &&
+			m.inv != nil && m.selectedHost < len(m.inv.Hosts) {
+			m.exitAction = "apply-host"
 			m.exitHostIdx = m.selectedHost
 			return m, tea.Quit
 		}
@@ -366,8 +335,6 @@ func (m rootModel) View() string {
 		b.WriteString(m.viewHosts())
 	case screenHost:
 		b.WriteString(m.viewHost())
-	case screenApply:
-		b.WriteString(m.viewApply())
 	case screenHelp:
 		b.WriteString(m.viewHelp())
 	}
@@ -397,13 +364,10 @@ func (m rootModel) renderStatusBar() string {
 		hints = append([]string{"↑↓ select", "enter drill in", "n add host"}, hints...)
 	}
 	if m.current == screenHosts {
-		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS", "a apply host"}, hints...)
+		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS", "a apply"}, hints...)
 	}
 	if m.current == screenHost {
-		hints = append([]string{"n add", "e edit", "s scan UPS", "a apply host"}, hints...)
-	}
-	if m.current == screenApply && m.apply.status != applyRunning {
-		hints = append([]string{"a apply all"}, hints...)
+		hints = append([]string{"n add", "e edit", "s scan UPS", "a apply"}, hints...)
 	}
 	return statusBarStyle.Render(strings.Join(hints, " · "))
 }
@@ -479,7 +443,7 @@ func (m rootModel) viewHelp() string {
 	b.WriteString("\n\n")
 	rows := [][2]string{
 		{"tab / shift+tab", "cycle screens"},
-		{"1 / 2 / 3 / 4", "jump to Dashboard / Hosts / Apply / Help"},
+		{"1 / 2 / 3", "jump to Dashboard / Hosts / Help"},
 		{"?", "open this help"},
 		{"↑ ↓ / k j", "select host (Hosts + Dashboard)"},
 		{"enter", "drill into selected host"},
@@ -487,9 +451,9 @@ func (m rootModel) viewHelp() string {
 		{"e", "edit selected host (Hosts/detail) · else $EDITOR"},
 		{"d", "delete selected host (Hosts screen)"},
 		{"s", "scan selected nut-server host for its UPS"},
+		{"a", "apply selected host over SSH (Hosts/detail)"},
 		{"r / R", "refresh live UPS state now (Dashboard)"},
 		{"i", "set up inventory (empty-state Dashboard only)"},
-		{"a / A", "apply — selected host on Hosts/detail, whole fleet elsewhere"},
 		{"o", "open the project page in your browser"},
 		{"esc", "go back one screen"},
 		{"q / ctrl+c", "quit"},

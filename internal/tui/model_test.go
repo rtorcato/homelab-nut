@@ -74,7 +74,7 @@ func TestTabCyclesScreens(t *testing.T) {
 	m := tea.Model(modelWithInventory(fixtureInventory()))
 
 	var cmd tea.Cmd
-	expected := []screen{screenHosts, screenApply, screenHelp, screenDashboard, screenHosts}
+	expected := []screen{screenHosts, screenHelp, screenDashboard, screenHosts, screenHelp}
 	for i, want := range expected {
 		m, cmd = send(t, m, key("tab"))
 		_ = cmd
@@ -99,8 +99,7 @@ func TestNumberKeysJumpToScreens(t *testing.T) {
 	}{
 		{"1", screenDashboard},
 		{"2", screenHosts},
-		{"3", screenApply},
-		{"4", screenHelp},
+		{"3", screenHelp},
 		{"?", screenHelp},
 	}
 	for _, tc := range cases {
@@ -148,70 +147,54 @@ func TestHostsScreenSelectionAndDrillIn(t *testing.T) {
 
 func TestEscBacksOutToDashboard(t *testing.T) {
 	m := tea.Model(modelWithInventory(fixtureInventory()))
-	// Navigate to Apply (without starting a run), then esc should return
-	// to the Dashboard rather than being a no-op.
+	// Navigate to Help, then esc should return to the Dashboard rather than
+	// being a no-op.
 	m, _ = send(t, m, key("3"))
-	if got := m.(rootModel).current; got != screenApply {
-		t.Fatalf("after '3': current = %v, want Apply", got)
+	if got := m.(rootModel).current; got != screenHelp {
+		t.Fatalf("after '3': current = %v, want Help", got)
 	}
 	m, _ = send(t, m, key("esc"))
 	if got := m.(rootModel).current; got != screenDashboard {
-		t.Errorf("after esc on Apply: current = %v, want Dashboard", got)
+		t.Errorf("after esc on Help: current = %v, want Dashboard", got)
 	}
 }
 
-func TestApplyKeyJumpsToApplyScreen(t *testing.T) {
-	m := tea.Model(modelWithInventory(fixtureInventory()))
-	m, _ = send(t, m, key("a"))
-	got := m.(rootModel)
-	if got.current != screenApply {
-		t.Errorf("after 'a': current = %v, want Apply", got.current)
-	}
-	if got.apply.status != applyRunning {
-		t.Errorf("after 'a': apply.status = %v, want running", got.apply.status)
+func TestApplyKeyOnHostScreensAppliesSelectedHost(t *testing.T) {
+	// 'a' on the Hosts list or a host's detail screen converges that one host
+	// over SSH (suspends the TUI, like 'e'/'s') — not a whole-fleet apply and
+	// not the removed Apply screen.
+	for _, start := range []screen{screenHosts, screenHost} {
+		m := modelWithInventory(fixtureInventory())
+		m.current = start
+		m.selectedHost = 1
+		next, cmd := tea.Model(m).Update(key("a"))
+		rm := next.(rootModel)
+		if rm.exitAction != "apply-host" {
+			t.Errorf("'a' on %v: exitAction = %q, want apply-host", start, rm.exitAction)
+		}
+		if rm.exitHostIdx != 1 {
+			t.Errorf("'a' on %v: exitHostIdx = %d, want 1", start, rm.exitHostIdx)
+		}
+		if cmd == nil {
+			t.Errorf("'a' on %v should return tea.Quit", start)
+		}
+		if got := ExitHostIndex(rm); got != 1 {
+			t.Errorf("'a' on %v: ExitHostIndex() = %d, want 1", start, got)
+		}
 	}
 }
 
-func TestApplyKeyScopesToSelectedHostOnHostsScreen(t *testing.T) {
-	m := modelWithInventory(fixtureInventory())
-	m.current = screenHosts
-	m.selectedHost = 1
-	wantHost := m.inv.Hosts[1].Name
-
-	next, _ := tea.Model(m).Update(key("a"))
-	got := next.(rootModel)
-	if got.apply.onlyHost != wantHost {
-		t.Errorf("'a' on Hosts: apply.onlyHost = %q, want %q", got.apply.onlyHost, wantHost)
-	}
-}
-
-func TestApplyKeyAppliesFleetOffHostScreens(t *testing.T) {
-	// On the Dashboard (and Apply/Help) 'a' applies the whole fleet, so
-	// onlyHost stays empty.
+func TestApplyKeyIgnoredOffHostScreens(t *testing.T) {
+	// Apply is host-scoped now — on the Dashboard (no unambiguous selected
+	// host) 'a' is a no-op, mirroring 's' and 'd'.
 	m := modelWithInventory(fixtureInventory()) // current == Dashboard
-	next, _ := tea.Model(m).Update(key("a"))
-	if got := next.(rootModel).apply.onlyHost; got != "" {
-		t.Errorf("'a' on Dashboard: apply.onlyHost = %q, want empty (whole fleet)", got)
+	next, cmd := tea.Model(m).Update(key("a"))
+	rm := next.(rootModel)
+	if rm.exitAction != "" {
+		t.Errorf("'a' on Dashboard set exitAction = %q, want empty", rm.exitAction)
 	}
-}
-
-func TestApplyKeyIgnoredWithEmptyInventory(t *testing.T) {
-	m := rootModel{version: "test", current: screenDashboard, inv: nil}
-	newM, _ := tea.Model(m).Update(key("a"))
-	out := newM.(rootModel)
-	if out.apply.status != applyIdle {
-		t.Errorf("apply key with nil inventory should not start apply, got status %v", out.apply.status)
-	}
-}
-
-func TestApplyCompleteMsgUpdatesStatus(t *testing.T) {
-	m := modelWithInventory(fixtureInventory())
-	m.apply = applyState{status: applyRunning}
-	msg := applyCompleteMsg{result: nil, err: nil, logs: ""}
-	newM, _ := tea.Model(m).Update(msg)
-	got := newM.(rootModel).apply.status
-	if got != applyDone {
-		t.Errorf("complete msg (no error) → status %v, want applyDone", got)
+	if cmd != nil {
+		t.Error("'a' on Dashboard should be a no-op (nil cmd)")
 	}
 }
 

@@ -32,11 +32,13 @@ Defined in `internal/cli/exit.go` and locked in by `TestExitCodesAreStable`.
 ### "Set up a homelab from scratch"
 
 ```bash
-homelab-nut init                              # interactive (huh forms) — writes homelab-nut.yaml
+homelab-nut init --no-apply                   # interactive (huh forms) — writes homelab-nut.yaml only
 homelab-nut inventory validate -o json        # confirm the file parses
 homelab-nut plan -o json                      # dry-run, parse to see proposed changes
 homelab-nut apply --auto-approve              # execute. Add `-o json` for a machine-readable summary
 ```
+
+(Without `--no-apply`, `init` applies the new inventory itself as its last step — drop the separate `apply` call.)
 
 ### "Add a host to an existing fleet"
 
@@ -75,9 +77,12 @@ Every subcommand respects the global `--inventory` / `-i` flag and the `--output
 
 Interactive bootstrap of `homelab-nut.yaml`. **Always interactive** — uses `charmbracelet/huh` forms. Don't invoke from non-interactive contexts (no `-o json` mode); use `inventory edit` or write the YAML directly instead.
 
+**Applies by default.** After writing the inventory, `init` immediately runs `apply` (whole fleet, auto-approved) so a fresh setup is actually live — an unapplied inventory is just inert YAML. Pass `--no-apply` to write the file only (hosts not reachable yet, or review-before-apply), then run `homelab-nut apply` later.
+
 - **Inputs:** terminal stdin/stdout (interactive only)
-- **Outputs:** writes the inventory file at the path from `--inventory`
-- **Exit:** 0 on success, 1 if the user aborts
+- **Flags:** `--no-apply` (write the inventory but skip the apply)
+- **Outputs:** writes the inventory file at the path from `--inventory`, then applies it (unless `--no-apply`)
+- **Exit:** 0 on success, 1 if the user aborts or the apply reports errors
 
 ### `homelab-nut inventory list`
 
