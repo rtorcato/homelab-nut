@@ -251,6 +251,31 @@ $ homelab-nut status -o json
 
 The TUI Dashboard color-codes badges using OL → green, OB → amber, anything with `LB` → red, errors → red `ERR`, empty/unknown → grey `?`. Scripts consuming `-o json` should parse `status` themselves and apply whatever rules they need — the JSON contract just carries the raw NUT string.
 
+### `homelab-nut shutdown test`
+
+Dry-runs the shutdown chain across the fleet **without powering anything off**. For each host with the `shutdown-target` role, it SSHes in as the configured user and verifies the host's shutdown command can be resolved:
+
+- a script path (first token contains `/`, e.g. `~/shutdown.sh`) must exist and be executable (`test -x`; `~/` is expanded via `$HOME` to mirror how the daemon runs it);
+- an inline command (e.g. `poweroff`, or the first token of `shutdown -h now`) must be found in `PATH` (`command -v`).
+
+```
+$ homelab-nut shutdown test -o json
+[
+  { "host": "workstation",   "command": "~/shutdown.sh", "ok": true },
+  { "host": "dream-machine", "command": "poweroff",      "ok": false, "error": "command not found in PATH: poweroff" }
+]
+```
+
+- **JSON schema:** array of `{ host, command, ok, error }`.
+  - `host` — inventory host name.
+  - `command` — the resolved shutdown command (empty if the host has none configured).
+  - `ok` — `true` if the command is runnable on that host.
+  - `error` — `omitempty`; the specific failure (`no shutdown command configured`, an SSH error, `command not found in PATH: …`, or `script not found or not executable: …`).
+- **Hosts without `shutdown-target`** in their roles are skipped. An inventory with no shutdown-target hosts prints a notice (text) / `[]` (json) and exits 0.
+- **Never powers anything off** — it only runs `test -x` / `command -v`.
+- **Flags:** `-o text|json`.
+- **Exit:** 0 if every checked host passes; `3` if any host fails the check (per-host detail is in each result's `error`).
+
 ### `homelab-nut version`
 
 ```
