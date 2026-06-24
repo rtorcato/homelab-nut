@@ -342,7 +342,7 @@ shutdown_daemon:                 # required when any host has role `shutdown-dae
 
 | Variable | When | Effect |
 |---|---|---|
-| `NUT_MONITOR_PASSWORD` | `apply` for `nut-client` and standalone `exporter` roles | The password `upsmon_remote` uses to read from the NUT server. Required when running these roles. |
+| `NUT_MONITOR_PASSWORD` | `apply` for `nut-client` and standalone `exporter` roles | The password `upsmon_remote` uses to read from the NUT server. **Optional** — if unset, `apply` auto-discovers it by SSHing into the resolved `nut-server` host and reading `/root/nut-credentials.txt` (requires the server to have been applied already). Set this to override or for CI where SSH-to-server isn't available. |
 | `EDITOR` | `inventory edit` and TUI `e` key | The editor to open; defaults to `vi`. |
 | `SSH_AUTH_SOCK` | `apply` for any role | If set, ssh-agent is tried before falling back to `~/.ssh/id_ed25519`. |
 | `<your-name>` (when `shutdown_daemon.slack_webhook_env` is set in the inventory) | `apply` for `shutdown-daemon` role | The actual Slack webhook URL. Not embedded in the inventory file. |

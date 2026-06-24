@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/rtorcato/homelab-nut/internal/inventory"
@@ -132,10 +131,9 @@ func (r exporter) Apply(ctx context.Context, conn *ssh.Connection, h *inventory.
 		if err != nil {
 			return fmt.Errorf("exporter apply on %s: %w", h.Name, err)
 		}
-		password := os.Getenv(nutMonitorPasswordEnv)
-		if password == "" {
-			return fmt.Errorf("exporter apply on %s (standalone): %s not set — run `sudo grep upsmon_remote /root/nut-credentials.txt` on %s and export it",
-				h.Name, nutMonitorPasswordEnv, server.Name)
+		password, err := resolveMonitorPassword(ctx, server)
+		if err != nil {
+			return fmt.Errorf("exporter apply on %s (standalone): %w", h.Name, err)
 		}
 		// setup-exporter.sh args: <NUT_SERVER> <NUT_USER> <NUT_PASSWORD>
 		cmd = fmt.Sprintf(`sudo bash -s -- %q upsmon_remote %q`, server.Address, password)
