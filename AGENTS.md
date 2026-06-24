@@ -226,6 +226,32 @@ $ homelab-nut uninstall pi-rack --auto-approve -o json
 - **Exit:** 0 success, 1 validation error, 3 partial failure (a host errored mid-removal), **4 nothing-to-remove** (ran cleanly but every artifact was already gone).
 - **Flags:** `--all` (whole fleet), `--role nut-server|nut-client|exporter|shutdown-daemon|shutdown-target|all` (default `all`), `--purge-nut` (also apt-purge NUT + delete `/etc/nut` — destructive), `--auto-approve/-y`, `--concurrency N`.
 
+### `homelab-nut backup [host]`
+
+Pulls a host's NUT + homelab-nut config off the target over SSH into a local gzip tarball: `/etc/nut` configs, the custom systemd units, a `MANIFEST` (NUT / exporter / kernel versions), and a snapshot of the host's inventory entry. **Read-only on the target — no `--auto-approve` needed.** Secrets (`upsd.users`, `/etc/default/nut-exporter`) are excluded by default so the tarball is safe to share; `--include-secrets` opts in.
+
+**Safety:** like `uninstall`, running with neither a host nor `--all` is refused.
+
+```
+$ homelab-nut backup pi-rack -o json
+{
+  "results": [
+    {
+      "host": "pi-rack",
+      "path": "backups/pi-rack-2026-06-24T20-15-00Z.tar.gz",
+      "bytes": 12345,
+      "sha256": "9f86d0818...",
+      "included_secrets": false
+    }
+  ]
+}
+```
+
+- **JSON schema:** `{ results: [ { host: string, path: string, bytes: int, sha256: string, included_secrets: bool, error?: string } ] }`
+- **Default path:** `./backups/<host>-<timestamp>.tar.gz` (UTC timestamp). Override with `--out <dir>` or, for a single host, `--out <file>.tar.gz`.
+- **Exit:** 0 success, 1 validation/flag error, 3 partial failure (a host's pull errored — see its `error` field).
+- **Flags:** `--all`, `--out/-O <dir|file.tar.gz>` (default `./backups`), `--include-secrets`, `--concurrency N`. Note: `-o` is the output **format** (text/json); the destination is `-O`/`--out`.
+
 ### `homelab-nut status`
 
 Polls each host with the `nut-server` role over the NUT TCP protocol (port 3493, native Go client — no `upsc` dependency) and reports live UPS state.

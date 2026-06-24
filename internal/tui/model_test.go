@@ -234,6 +234,25 @@ func TestUninstallKeyIgnoredOffHostScreens(t *testing.T) {
 	}
 }
 
+func TestBackupKeyOnHostScreensTargetsSelectedHost(t *testing.T) {
+	for _, start := range []screen{screenHosts, screenHost} {
+		m := modelWithInventory(fixtureInventory())
+		m.current = start
+		m.selectedHost = 1
+		next, cmd := tea.Model(m).Update(key("b"))
+		rm := next.(rootModel)
+		if rm.exitAction != "backup-host" {
+			t.Errorf("'b' on %v: exitAction = %q, want backup-host", start, rm.exitAction)
+		}
+		if rm.exitHostIdx != 1 {
+			t.Errorf("'b' on %v: exitHostIdx = %d, want 1", start, rm.exitHostIdx)
+		}
+		if cmd == nil {
+			t.Errorf("'b' on %v should return tea.Quit", start)
+		}
+	}
+}
+
 func TestApplyKeyIgnoredOffHostScreens(t *testing.T) {
 	// Apply is host-scoped now — on the Dashboard (no unambiguous selected
 	// host) 'a' is a no-op, mirroring 's' and 'd'.

@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rtorcato/homelab-nut/internal/forms"
 	"github.com/rtorcato/homelab-nut/internal/inventory"
@@ -114,6 +116,21 @@ func runUninstallHost(path string, idx int) error {
 		return fmt.Errorf("host index %d out of range (have %d hosts)", idx, len(inv.Hosts))
 	}
 	return runUninstall(os.Stdin, os.Stdout, os.Stderr, path, inv.Hosts[idx].Name, false, "all", false, false, 0, outputText)
+}
+
+// runBackupHost is the TUI 'b' entry point: back up a single host to the
+// default ./backups dir, secrets excluded (the CLI's --include-secrets is
+// the opt-in for a full capture). Read-only on the target.
+func runBackupHost(path string, idx int) error {
+	inv, err := inventory.Load(path)
+	if err != nil {
+		return err
+	}
+	if idx < 0 || idx >= len(inv.Hosts) {
+		return fmt.Errorf("host index %d out of range (have %d hosts)", idx, len(inv.Hosts))
+	}
+	ts := time.Now().UTC().Format("2006-01-02T15-04-05Z")
+	return runBackup(context.Background(), os.Stdout, os.Stderr, path, inv.Hosts[idx].Name, false, "", false, 0, ts, outputText)
 }
 
 // finalizeHostChange shows a summary of the affected host and saves only

@@ -30,6 +30,7 @@ homelab-nut [flags]
 ### SEE ALSO
 
 * [homelab-nut apply](./homelab-nut_apply)	 - Plan + execute changes on each host over SSH
+* [homelab-nut backup](./homelab-nut_backup)	 - Snapshot a host's NUT + homelab-nut config to a local tarball
 * [homelab-nut detect](./homelab-nut_detect)	 - Scan nut-server host(s) for connected UPS hardware (nut-scanner)
 * [homelab-nut init](./homelab-nut_init)	 - Generate homelab-nut.yaml interactively
 * [homelab-nut inventory](./homelab-nut_inventory)	 - Inspect and edit the homelab-nut inventory

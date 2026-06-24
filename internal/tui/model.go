@@ -246,6 +246,17 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	case "b", "B":
+		// Back up the selected host's NUT + homelab-nut config to a local
+		// tarball (./backups). Read-only on the target; secrets are excluded
+		// (the CLI's --include-secrets is the opt-in for a full capture).
+		if (m.current == screenHosts || m.current == screenHost) &&
+			m.inv != nil && m.selectedHost < len(m.inv.Hosts) {
+			m.exitAction = "backup-host"
+			m.exitHostIdx = m.selectedHost
+			return m, tea.Quit
+		}
+		return m, nil
 	case "o", "O":
 		openURL("https://github.com/rtorcato/homelab-nut")
 		return m, nil
@@ -376,10 +387,10 @@ func (m rootModel) renderStatusBar() string {
 		hints = append([]string{"↑↓ select", "enter drill in", "n add host"}, hints...)
 	}
 	if m.current == screenHosts {
-		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS", "a apply", "u uninstall"}, hints...)
+		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS", "a apply", "u uninstall", "b backup"}, hints...)
 	}
 	if m.current == screenHost {
-		hints = append([]string{"n add", "e edit", "s scan UPS", "a apply", "u uninstall"}, hints...)
+		hints = append([]string{"n add", "e edit", "s scan UPS", "a apply", "u uninstall", "b backup"}, hints...)
 	}
 	return statusBarStyle.Render(strings.Join(hints, " · "))
 }
@@ -492,6 +503,7 @@ func (m rootModel) viewHelp() string {
 		{"s", "scan selected nut-server host for its UPS"},
 		{"a", "apply selected host over SSH (Hosts/detail)"},
 		{"u", "uninstall selected host (preview + confirm; NUT package kept)"},
+		{"b", "back up selected host's config to ./backups (no secrets)"},
 		{"r / R", "refresh live UPS state now (Dashboard)"},
 		{"i", "set up inventory (empty-state Dashboard only)"},
 		{"o", "open the project page in your browser"},
