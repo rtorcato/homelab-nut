@@ -201,16 +201,24 @@ func (m rootModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.current = screenHelp
 		return m, nil
 	case "a", "A":
-		if m.apply.status != applyRunning && m.inv != nil && len(m.inv.Hosts) > 0 {
-			m.current = screenApply
-			m.apply = applyState{
-				status:    applyRunning,
-				startedAt: time.Now(),
-				logBuf:    new(bytes.Buffer),
-			}
-			return m, startApply(m.inv)
+		if m.apply.status == applyRunning || m.inv == nil || len(m.inv.Hosts) == 0 {
+			return m, nil
 		}
-		return m, nil
+		// Context-aware target: on the Hosts list or a host's detail screen,
+		// apply just the selected host. Everywhere else (Dashboard, Apply,
+		// Help) apply the whole fleet.
+		onlyHost := ""
+		if (m.current == screenHosts || m.current == screenHost) && m.selectedHost < len(m.inv.Hosts) {
+			onlyHost = m.inv.Hosts[m.selectedHost].Name
+		}
+		m.current = screenApply
+		m.apply = applyState{
+			status:    applyRunning,
+			startedAt: time.Now(),
+			logBuf:    new(bytes.Buffer),
+			onlyHost:  onlyHost,
+		}
+		return m, startApply(m.inv, onlyHost)
 	case "i", "I":
 		// init flow is only meaningful when there's no usable inventory —
 		// otherwise the user should use `e` to edit. Refuse to trigger
@@ -389,13 +397,13 @@ func (m rootModel) renderStatusBar() string {
 		hints = append([]string{"↑↓ select", "enter drill in", "n add host"}, hints...)
 	}
 	if m.current == screenHosts {
-		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS"}, hints...)
+		hints = append([]string{"↑↓ select", "enter drill in", "n add", "e edit", "d delete", "s scan UPS", "a apply host"}, hints...)
 	}
 	if m.current == screenHost {
-		hints = append([]string{"n add", "e edit", "s scan UPS"}, hints...)
+		hints = append([]string{"n add", "e edit", "s scan UPS", "a apply host"}, hints...)
 	}
 	if m.current == screenApply && m.apply.status != applyRunning {
-		hints = append([]string{"a apply"}, hints...)
+		hints = append([]string{"a apply all"}, hints...)
 	}
 	return statusBarStyle.Render(strings.Join(hints, " · "))
 }
@@ -481,7 +489,7 @@ func (m rootModel) viewHelp() string {
 		{"s", "scan selected nut-server host for its UPS"},
 		{"r / R", "refresh live UPS state now (Dashboard)"},
 		{"i", "set up inventory (empty-state Dashboard only)"},
-		{"a / A", "run apply (any screen)"},
+		{"a / A", "apply — selected host on Hosts/detail, whole fleet elsewhere"},
 		{"o", "open the project page in your browser"},
 		{"esc", "go back one screen"},
 		{"q / ctrl+c", "quit"},

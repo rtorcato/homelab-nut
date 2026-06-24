@@ -190,7 +190,7 @@ $ homelab-nut apply --auto-approve -o json
 - **No-op case:** `{ "elapsed": "0s", "noop": true }` (nothing was applied).
 - **Per-role output:** in text mode, streamed with `[host/role]` prefix as roles run. In JSON mode, role output is captured but not surfaced in the summary (the orchestrator writes to `io.Discard`) — the `result.hosts[].errors` array carries the failure detail.
 - **Exit:** 0 success, 1 plan-time validation error, 3 apply partial failure.
-- **Flags:** `--auto-approve/-y`, `--concurrency N` (max parallel hosts; 0 = unlimited).
+- **Flags:** `--auto-approve/-y`, `--concurrency N` (max parallel hosts; 0 = unlimited), `--host NAME` (apply only that host — the full inventory is still loaded so cross-host roles like nut-client resolve their dependencies; the result contains just that host).
 
 ### `homelab-nut status`
 

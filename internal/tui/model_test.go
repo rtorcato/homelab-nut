@@ -172,6 +172,29 @@ func TestApplyKeyJumpsToApplyScreen(t *testing.T) {
 	}
 }
 
+func TestApplyKeyScopesToSelectedHostOnHostsScreen(t *testing.T) {
+	m := modelWithInventory(fixtureInventory())
+	m.current = screenHosts
+	m.selectedHost = 1
+	wantHost := m.inv.Hosts[1].Name
+
+	next, _ := tea.Model(m).Update(key("a"))
+	got := next.(rootModel)
+	if got.apply.onlyHost != wantHost {
+		t.Errorf("'a' on Hosts: apply.onlyHost = %q, want %q", got.apply.onlyHost, wantHost)
+	}
+}
+
+func TestApplyKeyAppliesFleetOffHostScreens(t *testing.T) {
+	// On the Dashboard (and Apply/Help) 'a' applies the whole fleet, so
+	// onlyHost stays empty.
+	m := modelWithInventory(fixtureInventory()) // current == Dashboard
+	next, _ := tea.Model(m).Update(key("a"))
+	if got := next.(rootModel).apply.onlyHost; got != "" {
+		t.Errorf("'a' on Dashboard: apply.onlyHost = %q, want empty (whole fleet)", got)
+	}
+}
+
 func TestApplyKeyIgnoredWithEmptyInventory(t *testing.T) {
 	m := rootModel{version: "test", current: screenDashboard, inv: nil}
 	newM, _ := tea.Model(m).Update(key("a"))

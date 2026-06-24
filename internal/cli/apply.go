@@ -25,25 +25,32 @@ role with a non-empty diff. Streams each role's output prefixed with
 			path := inventoryPath(cmd)
 			autoApprove, _ := cmd.Flags().GetBool("auto-approve")
 			concurrency, _ := cmd.Flags().GetInt("concurrency")
-			return runApply(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path, autoApprove, concurrency, getOutputFormat(cmd))
+			host, _ := cmd.Flags().GetString("host")
+			return runApply(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path, host, autoApprove, concurrency, getOutputFormat(cmd))
 		},
 	}
 	cmd.Flags().BoolP("auto-approve", "y", false, "skip the y/N confirmation prompt before applying")
 	cmd.Flags().Int("concurrency", 0, "max hosts to apply against in parallel (0 = unlimited)")
+	cmd.Flags().String("host", "", "apply only this host (the full inventory is still used to resolve cross-host roles)")
 	addOutputFlag(cmd)
 	return cmd
 }
 
-func runApply(stdin io.Reader, stdout, stderr io.Writer, path string, autoApprove bool, concurrency int, format outputFormat) error {
+func runApply(stdin io.Reader, stdout, stderr io.Writer, path, onlyHost string, autoApprove bool, concurrency int, format outputFormat) error {
 	inv, err := loadInventoryOrReport(stderr, path)
 	if err != nil {
 		return err
+	}
+	if onlyHost != "" && inv.HostByName(onlyHost) == nil {
+		fmt.Fprintf(stderr, "host %q not found in inventory\n", onlyHost)
+		return errSilent
 	}
 
 	// 1. Plan first so the user sees what's about to happen.
 	planRes := orchestrator.Plan(commandContext(), inv, orchestrator.Options{
 		SSHConfig:      hssh.NewConfig(),
 		MaxConcurrency: concurrency,
+		OnlyHost:       onlyHost,
 	})
 	if format == outputText {
 		printPlanResult(stdout, planRes)
@@ -90,6 +97,7 @@ func runApply(stdin io.Reader, stdout, stderr io.Writer, path string, autoApprov
 	res := orchestrator.Apply(commandContext(), inv, orchestrator.Options{
 		SSHConfig:      hssh.NewConfig(),
 		MaxConcurrency: concurrency,
+		OnlyHost:       onlyHost,
 	}, applyOut)
 
 	// 4. Summary.
