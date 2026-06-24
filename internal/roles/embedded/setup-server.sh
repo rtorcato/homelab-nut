@@ -70,6 +70,25 @@ if command -v lsusb &> /dev/null; then
     lsusb | grep -i ups || log_warn "No UPS detected via USB. Please check connection."
 fi
 
+# Auto-detect the driver with nut-scanner now that NUT is installed. The
+# inventory-supplied $DRIVER is only a guess (often the usbhid-ups default);
+# prefer whatever nut-scanner actually finds on the bus. Falls back to the
+# requested driver when nothing is detected (e.g. no USB UPS, or a serial
+# unit that -U doesn't cover).
+if command -v nut-scanner &> /dev/null; then
+    DETECTED_DRIVER=$(nut-scanner -U 2>/dev/null | awk -F'"' '/^[[:space:]]*driver/ {print $2; exit}')
+    if [ -n "$DETECTED_DRIVER" ]; then
+        if [ "$DETECTED_DRIVER" != "$DRIVER" ]; then
+            log_info "nut-scanner detected driver '$DETECTED_DRIVER' (overriding requested '$DRIVER')"
+            DRIVER="$DETECTED_DRIVER"
+        else
+            log_info "nut-scanner confirmed driver '$DRIVER'"
+        fi
+    else
+        log_warn "nut-scanner found no USB UPS; using requested driver '$DRIVER'"
+    fi
+fi
+
 # Back up any existing NUT config so re-runs don't silently destroy customizations
 if compgen -G "/etc/nut/*.conf" > /dev/null; then
     BACKUP_DIR="/etc/nut/backup-$(date +%Y%m%d-%H%M%S)"
