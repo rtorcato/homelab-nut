@@ -106,17 +106,14 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 				fmt.Fprintf(cmd.ErrOrStderr(), "edit failed: %v\n", err)
 			}
 		case "add-host":
-			if err := runAddHost(path); err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "add host failed: %v\n", err)
-			}
+			reportHostActionErr(cmd.ErrOrStderr(), "add host", runAddHost(path))
+			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		case "edit-host":
-			if err := runEditHost(path, tui.ExitHostIndex(finalModel)); err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "edit host failed: %v\n", err)
-			}
+			reportHostActionErr(cmd.ErrOrStderr(), "edit host", runEditHost(path, tui.ExitHostIndex(finalModel)))
+			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		case "delete-host":
-			if err := runDeleteHost(path, tui.ExitHostIndex(finalModel)); err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "delete host failed: %v\n", err)
-			}
+			reportHostActionErr(cmd.ErrOrStderr(), "delete host", runDeleteHost(path, tui.ExitHostIndex(finalModel)))
+			pauseForReturn(cmd.InOrStdin(), cmd.OutOrStdout())
 		case "detect-host":
 			fmt.Fprintln(cmd.OutOrStdout(), "Scanning host for connected UPS over SSH (nut-scanner)…")
 			if err := runDetectHost(cmd.OutOrStdout(), cmd.ErrOrStderr(), path, tui.ExitHostIndex(finalModel)); err != nil {
@@ -129,6 +126,15 @@ func runTUILoop(cmd *cobra.Command, version, path string) error {
 		default:
 			return nil
 		}
+	}
+}
+
+// reportHostActionErr prints a host-action failure, unless the error is
+// silent (empty message = the flow already printed a formatted message,
+// e.g. a validation failure). action is a label like "add host".
+func reportHostActionErr(stderr io.Writer, action string, err error) {
+	if err != nil && err.Error() != "" {
+		fmt.Fprintf(stderr, "%s failed: %v\n", action, err)
 	}
 }
 
