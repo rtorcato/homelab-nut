@@ -305,6 +305,41 @@ func TestExitHostIndexHelper_NilSafe(t *testing.T) {
 	}
 }
 
+func TestSKeyOnNUTServerHostSetsDetectAction(t *testing.T) {
+	m := modelWithInventory(fixtureInventory()) // host[0]=pi has nut-server
+	m.current = screenHosts
+	m.selectedHost = 0
+	newModel, cmd := tea.Model(m).Update(key("s"))
+	rm := newModel.(rootModel)
+	if rm.exitAction != "detect-host" {
+		t.Errorf("'s' on nut-server host: exitAction = %q, want detect-host", rm.exitAction)
+	}
+	if rm.exitHostIdx != 0 {
+		t.Errorf("'s': exitHostIdx = %d, want 0", rm.exitHostIdx)
+	}
+	if cmd == nil {
+		t.Error("'s' on nut-server host should return tea.Quit")
+	}
+}
+
+func TestSKeyIgnoredOnNonNUTServerHost(t *testing.T) {
+	m := modelWithInventory(fixtureInventory()) // host[1]=ws has no nut-server
+	m.current = screenHosts
+	m.selectedHost = 1
+	newModel, _ := tea.Model(m).Update(key("s"))
+	if got := newModel.(rootModel).exitAction; got != "" {
+		t.Errorf("'s' on non-nut-server host should be ignored, exitAction = %q", got)
+	}
+}
+
+func TestSKeyIgnoredOffHostScreens(t *testing.T) {
+	m := modelWithInventory(fixtureInventory()) // current == Dashboard
+	newModel, _ := tea.Model(m).Update(key("s"))
+	if got := newModel.(rootModel).exitAction; got != "" {
+		t.Errorf("'s' off the Hosts/detail screens should be ignored, exitAction = %q", got)
+	}
+}
+
 func TestExitActionHelper_NilSafe(t *testing.T) {
 	// ExitAction on a non-rootModel returns "" without panic.
 	var notMe tea.Model
