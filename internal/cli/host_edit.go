@@ -21,7 +21,7 @@ func runAddHost(path string) error {
 	if err != nil {
 		return err
 	}
-	host, err := forms.AskHost(len(inv.Hosts) + 1)
+	host, err := forms.AskHost(len(inv.Hosts)+1, wizardDriverDetector)
 	if err != nil {
 		return ignoreAbort(err)
 	}
@@ -38,7 +38,7 @@ func runEditHost(path string, idx int) error {
 	if idx < 0 || idx >= len(inv.Hosts) {
 		return fmt.Errorf("host index %d out of range (have %d hosts)", idx, len(inv.Hosts))
 	}
-	edited, err := forms.EditHost(&inv.Hosts[idx])
+	edited, err := forms.EditHost(&inv.Hosts[idx], wizardDriverDetector)
 	if err != nil {
 		return ignoreAbort(err)
 	}

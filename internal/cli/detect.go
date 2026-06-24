@@ -200,6 +200,36 @@ func printDetectResults(w io.Writer, results []detectResult, write bool) {
 	}
 }
 
+// wizardDriverDetector is the forms.DriverDetector the add/edit-host
+// wizard uses to best-effort pre-fill the UPS driver. It scans over SSH
+// with a short connect timeout so an unreachable or not-yet-set-up host
+// (the common case when adding a host) falls back to the default fast
+// instead of hanging the form. Only a single unambiguous result is used.
+func wizardDriverDetector(h *inventory.Host) (string, bool) {
+	if h == nil || h.Address == "" || h.User == "" {
+		return "", false
+	}
+	cfg := ssh.NewConfig()
+	cfg.ConnectTimeout = 6 * time.Second
+	executor := ssh.NewExecutor(cfg)
+	defer func() { _ = executor.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), detectTimeout)
+	defer cancel()
+
+	conn, err := executor.Open(h)
+	if err != nil {
+		return "", false
+	}
+	defer func() { _ = conn.Close() }()
+
+	devices, err := upsdetect.Scan(ctx, conn)
+	if err != nil || len(devices) != 1 {
+		return "", false
+	}
+	return devices[0].Driver, true
+}
+
 // runDetectHost is the TUI entry point: scan + write a single host by its
 // inventory index, then print a one-line summary. Used by the 's' shortcut.
 func runDetectHost(stdout, stderr io.Writer, path string, idx int) error {
