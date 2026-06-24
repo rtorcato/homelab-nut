@@ -98,6 +98,27 @@ func remoteDelaysFromInventory(inv *inventory.Inventory) string {
 	return strings.Join(lines, "\n")
 }
 
+// remoteThresholdsFromInventory builds the per-target "THRESHOLD_<host>=<pct>"
+// override lines for every shutdown-target that declares its own threshold.
+// The daemon fires each target as the UPS crosses that target's threshold, so
+// dependents can be staged (NAS sheds early, router last). Returned
+// newline-joined, in inventory order (may be empty). Targets that omit a
+// threshold inherit the daemon's THRESHOLD at trigger time.
+func remoteThresholdsFromInventory(inv *inventory.Inventory) string {
+	if inv == nil {
+		return ""
+	}
+	lines := make([]string, 0)
+	for i := range inv.Hosts {
+		h := &inv.Hosts[i]
+		if !h.HasRole(inventory.RoleShutdownTarget) || h.Shutdown == nil || h.Shutdown.Threshold <= 0 {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("THRESHOLD_%s=%d", sanitizeNodeHost(h.Address), h.Shutdown.Threshold))
+	}
+	return strings.Join(lines, "\n")
+}
+
 // upsRefFromInventory returns the local UPS reference for the daemon
 // host (assumes the daemon runs on the nut-server host — common config).
 // Defaults to "myups@localhost" if no nut-server is colocated.
@@ -190,6 +211,10 @@ func (r shutdownDaemon) Plan(ctx context.Context, conn *ssh.Connection, h *inven
 		d.Actions = append(d.Actions,
 			fmt.Sprintf("per-target shutdown delays: %s", strings.ReplaceAll(delays, "\n", ", ")))
 	}
+	if thresholds := remoteThresholdsFromInventory(inv); thresholds != "" {
+		d.Actions = append(d.Actions,
+			fmt.Sprintf("per-target shutdown thresholds: %s", strings.ReplaceAll(thresholds, "\n", ", ")))
+	}
 	d.Actions = append(d.Actions, "output public key for manual distribution to shutdown-targets")
 	return d, nil
 }
@@ -231,12 +256,13 @@ func (r shutdownDaemon) Apply(ctx context.Context, conn *ssh.Connection, h *inve
 	// survive the env var cleanly (same single-stdin reasoning as the daemon).
 	remoteCmdsB64 := base64.StdEncoding.EncodeToString([]byte(remoteCmdsFromInventory(inv)))
 	remoteDelaysB64 := base64.StdEncoding.EncodeToString([]byte(remoteDelaysFromInventory(inv)))
+	remoteThresholdsB64 := base64.StdEncoding.EncodeToString([]byte(remoteThresholdsFromInventory(inv)))
 
 	// Wire all the inputs via env vars on the remote sudo invocation.
 	// We pass the daemon's bytes as a base64 env var so the orchestrator
 	// script only needs a single stdin (itself).
 	cmd := fmt.Sprintf(
-		`sudo HOMELAB_NUT_DAEMON_B64=%q UPS=%q THRESHOLD=%d POLL_INTERVAL=%d REMOTE_NODES=%q REMOTE_CMDS_B64=%q REMOTE_DELAYS_B64=%q SLACK_WEBHOOK=%q bash -s --`,
+		`sudo HOMELAB_NUT_DAEMON_B64=%q UPS=%q THRESHOLD=%d POLL_INTERVAL=%d REMOTE_NODES=%q REMOTE_CMDS_B64=%q REMOTE_DELAYS_B64=%q REMOTE_THRESHOLDS_B64=%q SLACK_WEBHOOK=%q bash -s --`,
 		daemonB64,
 		upsRefFromInventory(h),
 		threshold,
@@ -244,6 +270,7 @@ func (r shutdownDaemon) Apply(ctx context.Context, conn *ssh.Connection, h *inve
 		remoteNodes,
 		remoteCmdsB64,
 		remoteDelaysB64,
+		remoteThresholdsB64,
 		slackWebhook,
 	)
 

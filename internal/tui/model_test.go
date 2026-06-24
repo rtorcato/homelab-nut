@@ -28,6 +28,27 @@ func fixtureInventory() *inventory.Inventory {
 	}
 }
 
+func TestStagedThresholds(t *testing.T) {
+	// No per-target thresholds set → no staged line (all inherit the default).
+	if got := stagedThresholds(fixtureInventory()); got != "" {
+		t.Errorf("with no per-target thresholds, want empty, got %q", got)
+	}
+
+	inv := &inventory.Inventory{
+		Hosts: []inventory.Host{
+			{Name: "pi", Address: "192.0.2.10", User: "pi", Roles: []inventory.Role{inventory.RoleShutdownDaemon}},
+			{Name: "nas", Address: "192.0.2.30", User: "root", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Threshold: 60}},
+			{Name: "ws", Address: "192.0.2.20", User: "admin", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "~/shutdown.sh"}},
+			{Name: "router", Address: "192.0.2.1", User: "root", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff", Threshold: 20}},
+		},
+		ShutdownDaemon: &inventory.ShutdownDaemon{Threshold: 50, PollInterval: 30},
+	}
+	// Inventory order, only targets with their own threshold, "ws" (inherits) omitted.
+	if got, want := stagedThresholds(inv), "nas@60% router@20%"; got != want {
+		t.Errorf("stagedThresholds = %q, want %q", got, want)
+	}
+}
+
 // modelWithInventory returns a rootModel pre-loaded with the given inventory.
 func modelWithInventory(inv *inventory.Inventory) rootModel {
 	return rootModel{

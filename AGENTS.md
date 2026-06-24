@@ -321,6 +321,8 @@ hosts:
       command: ~/shutdown.sh     # path → deployed; bare cmd (e.g. `poweroff`) → sent inline
       delay: 0                   # optional; seconds the daemon waits before sending this
                                  # target's shutdown (sequence dependents, e.g. gateway last)
+      threshold: 60              # optional; 1-99 (% battery) — fire THIS target at its own
+                                 # level for staged shutdown. Omit/0 = inherit daemon threshold
 shutdown_daemon:                 # OPTIONAL fleet-wide default; a per-host block overrides it
   threshold: 50                  # 1-99 (% battery)
   poll_interval: 30              # seconds, > 0
@@ -341,7 +343,7 @@ appear in `inventory show -o json`.
 - Required: `hosts[].name`, `address`, `user`, `roles`
 - No duplicate host names
 - `nut-server` requires `ups.name` + `ups.driver`
-- `shutdown-target` with a `shutdown` block needs `command`; `shutdown.delay` (if set) must be ≥ 0 (seconds)
+- `shutdown-target` with a `shutdown` block needs `command`; `shutdown.delay` (if set) must be ≥ 0 (seconds); `shutdown.threshold` (if set) ∈ [1, 99] — omit to inherit the daemon's threshold
 - a root `shutdown_daemon` block requires at least one host with `shutdown-daemon` role
 - a per-host `shutdown_daemon` block requires that host to have the `shutdown-daemon` role
 - `threshold` ∈ [1, 99], `poll_interval` > 0 (both the global block and per-host overrides)

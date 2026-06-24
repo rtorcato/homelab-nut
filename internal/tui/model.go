@@ -397,9 +397,28 @@ func (m rootModel) viewDashboard() string {
 		if d := m.inv.EffectiveShutdownDaemon(dh); d != nil {
 			fmt.Fprintf(&b, "\n\n%s %s — threshold=%d%%  poll=%ds",
 				titleStyle.Render("Daemon:"), dh.Name, d.Threshold, d.PollInterval)
+			// Surface staged per-target thresholds, e.g. "staged: nas@60% router@20%",
+			// so the one-size-fits-all threshold above isn't read as the whole story.
+			if staged := stagedThresholds(m.inv); staged != "" {
+				fmt.Fprintf(&b, "  ·  staged: %s", staged)
+			}
 		}
 	}
 	return bodyStyle.Render(b.String())
+}
+
+// stagedThresholds formats the shutdown-targets that set their own battery
+// threshold as "name@N%" pairs in inventory order, e.g. "nas@60% router@20%".
+// Targets that inherit the daemon default (already shown alongside) are
+// omitted, so the line only appears when shutdown is genuinely staged.
+func stagedThresholds(inv *inventory.Inventory) string {
+	parts := make([]string, 0)
+	for _, h := range inv.HostsWithRole(inventory.RoleShutdownTarget) {
+		if h.Shutdown != nil && h.Shutdown.Threshold > 0 {
+			parts = append(parts, fmt.Sprintf("%s@%d%%", h.Name, h.Shutdown.Threshold))
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 func (m rootModel) emptyDashboard() string {

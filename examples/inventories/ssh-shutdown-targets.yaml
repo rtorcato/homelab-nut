@@ -6,9 +6,14 @@
 # threshold.
 #
 #   server  : owns the UPS, exposes Prometheus metrics, and runs the daemon.
-#   nas     : shutdown-target — powered off with an inline `poweroff` over SSH.
-#   gateway : shutdown-target — powered off LAST (delay: 60) so the NAS finishes
-#             shutting down before the network gateway it talks through dies.
+#   nas     : shutdown-target — sheds EARLY (threshold: 60) to flush caches and
+#             unmount volumes safely while there's still plenty of runtime.
+#   gateway : shutdown-target — sheds LAST (threshold: 20) so the rest of the
+#             network keeps talking through it as long as the battery allows.
+#
+# This is "staged shutdown": each target fires as the battery crosses its own
+# `shutdown.threshold`, not all at once. Targets that omit a threshold inherit
+# the daemon's `shutdown_daemon.threshold` below.
 #
 # Inline `command: poweroff` (vs a `~/shutdown.sh` script path) suits appliances
 # like UniFi OS that wipe the home dir on firmware updates.
@@ -38,6 +43,7 @@ hosts:
       - shutdown-target
     shutdown:
       command: poweroff        # inline command, sent over SSH at trigger time
+      threshold: 60            # shed early — fire this target the moment battery ≤ 60%
 
   - name: gateway
     address: 192.0.2.1
@@ -46,7 +52,8 @@ hosts:
       - shutdown-target
     shutdown:
       command: poweroff
-      delay: 60                # wait 60s before this one — let the NAS finish first
+      threshold: 20            # shed last — keep the network up until battery ≤ 20%
+      delay: 60                # plus a 60s grace once fired, so the NAS finishes first
 
 # Battery-watch tuning for the daemon. Omit the whole block to use the built-in
 # 50% / 30s defaults.
