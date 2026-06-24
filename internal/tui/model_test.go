@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/rtorcato/homelab-nut/internal/inventory"
+	"github.com/rtorcato/homelab-nut/internal/upspoll"
 )
 
 // fixtureInventory returns a small but role-diverse inventory for tests.
@@ -235,11 +236,38 @@ func TestNKeyOnHostsScreenSetsAddHostAction(t *testing.T) {
 	}
 }
 
-func TestNKeyIgnoredOffHostsScreen(t *testing.T) {
+func TestNKeyWorksFromAnyScreen(t *testing.T) {
+	// 'n' is a global shortcut now — adding a host shouldn't require
+	// hunting for the Hosts tab first. On the Dashboard it should still
+	// trigger the add-host flow.
 	m := modelWithInventory(fixtureInventory()) // current == Dashboard
+	newModel, cmd := tea.Model(m).Update(key("n"))
+	rm := newModel.(rootModel)
+	if rm.exitAction != "add-host" {
+		t.Errorf("'n' on Dashboard: exitAction = %q, want add-host", rm.exitAction)
+	}
+	if cmd == nil {
+		t.Error("'n' on Dashboard should return tea.Quit")
+	}
+}
+
+func TestNKeyIgnoredWithEmptyInventory(t *testing.T) {
+	// With no hosts to append to, the empty-state Dashboard points at 'i'
+	// (init) instead, so 'n' is a no-op.
+	m := rootModel{version: "test", current: screenDashboard, inv: &inventory.Inventory{}}
 	newModel, _ := tea.Model(m).Update(key("n"))
 	if got := newModel.(rootModel).exitAction; got != "" {
-		t.Errorf("'n' off the Hosts screen should be ignored, exitAction = %q", got)
+		t.Errorf("'n' with empty inventory should be ignored, exitAction = %q", got)
+	}
+}
+
+func TestDashboardFooterAdvertisesAddHost(t *testing.T) {
+	// The Dashboard footer must surface how to add a host so the user
+	// doesn't have to discover the Hosts tab first.
+	m := modelWithInventory(fixtureInventory())
+	m.dashboard.rows = []upspoll.Row{{}} // non-empty so host hints show
+	if bar := m.renderStatusBar(); !strings.Contains(bar, "n add") {
+		t.Errorf("Dashboard footer should advertise 'n add host', got %q", bar)
 	}
 }
 
