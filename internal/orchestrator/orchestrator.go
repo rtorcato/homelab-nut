@@ -46,6 +46,12 @@ type Options struct {
 	MaxConcurrency int
 	// SSHConfig is passed straight through to the SSH executor.
 	SSHConfig ssh.Config
+	// OnlyHost, when non-empty, limits execution to the host with this
+	// name. The *full* inventory still rides along on the context, so
+	// cross-host roles (nut-client, shutdown-daemon, …) resolve their
+	// dependencies correctly; only the named host's roles actually run,
+	// and the Result contains just that host. Empty = the whole fleet.
+	OnlyHost string
 }
 
 // HostResult records what happened on one host.
@@ -150,20 +156,28 @@ func run(ctx context.Context, inv *inventory.Inventory, opts Options, m mode, ou
 	// shutdown-daemon can resolve cross-host data.
 	ctx = roles.WithInventory(ctx, inv)
 
+	// Resolve which hosts to act on. The full inventory is already in ctx
+	// above, so cross-host roles still see every host even when OnlyHost
+	// narrows execution to one.
+	targets := selectTargets(inv, opts.OnlyHost)
+	if len(targets) == 0 {
+		return &Result{}
+	}
+
 	executor := ssh.NewExecutor(opts.SSHConfig)
 	defer func() { _ = executor.Close() }()
 
-	result := &Result{Hosts: make([]*HostResult, len(inv.Hosts))}
+	result := &Result{Hosts: make([]*HostResult, len(targets))}
 
 	concurrency := opts.MaxConcurrency
-	if concurrency <= 0 || concurrency > len(inv.Hosts) {
-		concurrency = len(inv.Hosts)
+	if concurrency <= 0 || concurrency > len(targets) {
+		concurrency = len(targets)
 	}
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 
-	for i := range inv.Hosts {
-		host := &inv.Hosts[i]
+	for i := range targets {
+		host := targets[i]
 		hr := &HostResult{Host: host}
 		result.Hosts[i] = hr
 
@@ -177,6 +191,22 @@ func run(ctx context.Context, inv *inventory.Inventory, opts Options, m mode, ou
 	}
 	wg.Wait()
 	return result
+}
+
+// selectTargets returns the hosts to act on: just the one named by
+// onlyHost, or every host when onlyHost is empty. The returned slice
+// points into inv.Hosts (no copies) so the orchestrator mutates the real
+// host values, same as before.
+func selectTargets(inv *inventory.Inventory, onlyHost string) []*inventory.Host {
+	targets := make([]*inventory.Host, 0, len(inv.Hosts))
+	for i := range inv.Hosts {
+		h := &inv.Hosts[i]
+		if onlyHost != "" && h.Name != onlyHost {
+			continue
+		}
+		targets = append(targets, h)
+	}
+	return targets
 }
 
 func runHost(ctx context.Context, executor *ssh.Executor, host *inventory.Host, hr *HostResult, m mode, out io.Writer) {

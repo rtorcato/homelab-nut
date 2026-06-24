@@ -37,6 +37,9 @@ type applyState struct {
 	logBuf   *bytes.Buffer
 	result   *orchestrator.Result
 	err      error
+	// onlyHost is the single host this run targets, or "" for the whole
+	// fleet. Set when apply is launched from a selected host.
+	onlyHost string
 }
 
 // applyCompleteMsg is delivered when the background apply finishes.
@@ -48,12 +51,14 @@ type applyCompleteMsg struct {
 
 // startApply runs the orchestrator in a background goroutine and
 // returns a tea.Cmd that delivers an applyCompleteMsg when done.
+// onlyHost limits the run to a single host ("" = whole fleet).
 // We don't try to stream progress to the TUI yet — see applyState.
-func startApply(inv *inventory.Inventory) tea.Cmd {
+func startApply(inv *inventory.Inventory, onlyHost string) tea.Cmd {
 	return func() tea.Msg {
 		var buf bytes.Buffer
 		res := orchestrator.Apply(context.Background(), inv, orchestrator.Options{
 			SSHConfig: hssh.NewConfig(),
+			OnlyHost:  onlyHost,
 		}, &buf)
 		var err error
 		if res != nil && res.HasErrors() {
@@ -65,6 +70,16 @@ func startApply(inv *inventory.Inventory) tea.Cmd {
 			logs:   buf.String(),
 		}
 	}
+}
+
+// applyScopeLabel describes what an apply run targets: a single host or
+// the whole fleet. Shown in the running/done headers so the user can tell
+// a per-host apply from a fleet apply at a glance.
+func applyScopeLabel(onlyHost string) string {
+	if onlyHost != "" {
+		return "— " + onlyHost
+	}
+	return "— whole fleet"
 }
 
 func countFailedHosts(res *orchestrator.Result) int {
@@ -94,13 +109,13 @@ func (m rootModel) viewApply() string {
 
 	case applyRunning:
 		spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}[int(time.Since(m.apply.startedAt).Milliseconds()/100)%10]
-		fmt.Fprintln(&b, titleStyle.Render(fmt.Sprintf("%s Apply running…", spinner)))
+		fmt.Fprintln(&b, titleStyle.Render(fmt.Sprintf("%s Apply running… %s", spinner, applyScopeLabel(m.apply.onlyHost))))
 		fmt.Fprintln(&b)
 		fmt.Fprintf(&b, "Started %s ago\n", time.Since(m.apply.startedAt).Round(time.Second))
 		fmt.Fprintln(&b, hintStyle.Render("Mid-flight progress streaming lands in a follow-up — see TODOS.md."))
 
 	case applyDone:
-		fmt.Fprintln(&b, lipgloss.NewStyle().Foreground(palette.primary).Bold(true).Render("✓ Apply complete"))
+		fmt.Fprintln(&b, lipgloss.NewStyle().Foreground(palette.primary).Bold(true).Render("✓ Apply complete "+applyScopeLabel(m.apply.onlyHost)))
 		fmt.Fprintln(&b)
 		writeApplySummary(&b, m.apply.result, m.apply.elapsed)
 
@@ -151,7 +166,7 @@ func writeApplyPlan(b *strings.Builder, inv *inventory.Inventory) {
 	}
 
 	fmt.Fprintln(b)
-	fmt.Fprintln(b, hintStyle.Render("press 'a' to apply · runs the same orchestrator as `homelab-nut apply`"))
+	fmt.Fprintln(b, hintStyle.Render("press 'a' to apply the whole fleet · to apply just one host, select it on the Hosts screen and press 'a'"))
 }
 
 // roleActionLine is a short, inventory-aware description of what applying

@@ -134,6 +134,42 @@ func TestRun_NilInventoryReturnsEmptyResult(t *testing.T) {
 	}
 }
 
+func TestSelectTargets(t *testing.T) {
+	inv := &inventory.Inventory{
+		Hosts: []inventory.Host{
+			{Name: "pi"}, {Name: "nas"}, {Name: "ws"},
+		},
+	}
+
+	all := selectTargets(inv, "")
+	if len(all) != 3 {
+		t.Fatalf("onlyHost=\"\": got %d targets, want 3 (whole fleet)", len(all))
+	}
+
+	one := selectTargets(inv, "nas")
+	if len(one) != 1 || one[0].Name != "nas" {
+		t.Fatalf("onlyHost=nas: got %v, want [nas]", targetNames(one))
+	}
+	// Targets must point into inv.Hosts so the orchestrator mutates real
+	// host values (not copies).
+	if one[0] != &inv.Hosts[1] {
+		t.Error("selectTargets should return pointers into inv.Hosts, not copies")
+	}
+
+	none := selectTargets(inv, "ghost")
+	if len(none) != 0 {
+		t.Errorf("onlyHost=ghost: got %d targets, want 0", len(none))
+	}
+}
+
+func targetNames(hs []*inventory.Host) []string {
+	out := make([]string, len(hs))
+	for i, h := range hs {
+		out[i] = h.Name
+	}
+	return out
+}
+
 // noteForFutureWork: full Plan/Apply integration tests need a mockable
 // ssh.Connection (the current type wraps a *ssh.Client and there's no
 // interface seam yet). The role-level unit tests already cover Plan
