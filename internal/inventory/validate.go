@@ -59,7 +59,7 @@ func (inv *Inventory) Validate() error {
 	}
 
 	if inv.ShutdownDaemon != nil {
-		validateShutdownDaemon(v, inv.ShutdownDaemon)
+		validateShutdownDaemon(v, "shutdown_daemon", inv.ShutdownDaemon)
 
 		// If a shutdown_daemon block is configured, somebody must run it.
 		if len(inv.HostsWithRole(RoleShutdownDaemon)) == 0 {
@@ -123,17 +123,26 @@ func validateHost(v *ValidationError, h *Host, idx int) {
 	if h.Shutdown != nil && h.Shutdown.Command == "" {
 		v.add(p("shutdown.command"), "must be a script path or inline command")
 	}
+
+	// Per-host daemon override: validate its values, and flag it on a host
+	// that doesn't actually run the daemon (mirrors the global orphan check).
+	if h.ShutdownDaemon != nil {
+		validateShutdownDaemon(v, p("shutdown_daemon"), h.ShutdownDaemon)
+		if !h.HasRole(RoleShutdownDaemon) {
+			v.add(p("shutdown_daemon"), "set but host lacks role 'shutdown-daemon'")
+		}
+	}
 }
 
-func validateShutdownDaemon(v *ValidationError, d *ShutdownDaemon) {
+func validateShutdownDaemon(v *ValidationError, prefix string, d *ShutdownDaemon) {
 	if d.Threshold < 1 || d.Threshold > 99 {
-		v.add("shutdown_daemon.threshold", fmt.Sprintf("%d is out of range (1-99)", d.Threshold))
+		v.add(prefix+".threshold", fmt.Sprintf("%d is out of range (1-99)", d.Threshold))
 	}
 	if d.PollInterval <= 0 {
-		v.add("shutdown_daemon.poll_interval", fmt.Sprintf("%d must be positive", d.PollInterval))
+		v.add(prefix+".poll_interval", fmt.Sprintf("%d must be positive", d.PollInterval))
 	}
 	if d.SlackWebhookEnv != "" && strings.ContainsAny(d.SlackWebhookEnv, " \t\n") {
-		v.add("shutdown_daemon.slack_webhook_env", "must be an env var name, not a URL")
+		v.add(prefix+".slack_webhook_env", "must be an env var name, not a URL")
 	}
 }
 

@@ -69,7 +69,7 @@ func (m rootModel) hostRoleLines(h inventory.Host, rowByHost map[string]upspoll.
 			lines = append(lines, roleLine{summary: summary, state: m.nutServerState(h, rowByHost)})
 		case inventory.RoleShutdownDaemon:
 			summary := "shutdown-daemon"
-			if d := m.inv.ShutdownDaemon; d != nil {
+			if d := m.inv.EffectiveShutdownDaemon(&h); d != nil {
 				tgt := len(m.inv.HostsWithRole(inventory.RoleShutdownTarget))
 				summary = fmt.Sprintf("shutdown-daemon (%d%%, %ds, %d tgt)", d.Threshold, d.PollInterval, tgt)
 			}

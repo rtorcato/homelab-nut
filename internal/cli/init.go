@@ -51,9 +51,11 @@ func runInit(stdin io.Reader, stdout, stderr io.Writer, path string, noApply boo
 
 	inv := &inventory.Inventory{}
 
-	// 2. Add hosts in a loop. At least one is required.
+	// 2. Add hosts in a loop. At least one is required. A host with the
+	// shutdown-daemon role collects its battery-watch tuning inline in the
+	// wizard (seeded from the fleet default, if one's been set on a prior host).
 	for {
-		host, err := forms.AskHost(len(inv.Hosts)+1, wizardDriverDetector)
+		host, err := forms.AskHost(len(inv.Hosts)+1, wizardDriverDetector, inv.ShutdownDaemon)
 		if err != nil {
 			return err
 		}
@@ -68,16 +70,7 @@ func runInit(stdin io.Reader, stdout, stderr io.Writer, path string, noApply boo
 		}
 	}
 
-	// 3. If any host has shutdown-daemon, collect daemon config.
-	if len(inv.HostsWithRole(inventory.RoleShutdownDaemon)) > 0 {
-		d, err := forms.AskShutdownDaemon()
-		if err != nil {
-			return err
-		}
-		inv.ShutdownDaemon = d
-	}
-
-	// 4. Preview + confirm.
+	// 3. Preview + confirm.
 	var preview bytes.Buffer
 	if err := inv.Render(&preview); err != nil {
 		return fmt.Errorf("render preview: %w", err)
