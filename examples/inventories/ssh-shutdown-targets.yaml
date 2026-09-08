@@ -45,6 +45,19 @@ hosts:
       command: poweroff        # inline command, sent over SSH at trigger time
       threshold: 60            # shed early — fire this target the moment battery ≤ 60%
 
+  # Synology DSM 7 refuses root SSH, so this logs in as an `administrators`
+  # member and elevates. Multi-word commands are fine — they're shell-quoted
+  # into the daemon's conf. Needs a NOPASSWD sudoers rule on the NAS; see
+  # docs/smart-shutdown.md#synology-nas-dsm-7.
+  - name: synology
+    address: 192.0.2.26
+    user: admin
+    roles:
+      - shutdown-target
+    shutdown:
+      command: "sudo /sbin/shutdown -h now"
+      threshold: 60
+
   - name: gateway
     address: 192.0.2.1
     user: root

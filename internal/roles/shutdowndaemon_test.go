@@ -102,7 +102,7 @@ func TestRemoteCmdsFromInventory(t *testing.T) {
 			&inventory.Inventory{Hosts: []inventory.Host{
 				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff"}},
 			}},
-			"CMD_10_0_10_125=poweroff",
+			"CMD_10_0_10_125='poweroff'",
 		},
 		{
 			"multiple targets, inventory order, non-targets skipped",
@@ -111,7 +111,24 @@ func TestRemoteCmdsFromInventory(t *testing.T) {
 				{Name: "ws", User: "admin", Address: "192.0.2.20", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "~/shutdown.sh"}},
 				{Name: "nas", User: "root", Address: "10.0.10.125", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "poweroff"}},
 			}},
-			"CMD_192_0_2_20=~/shutdown.sh\nCMD_10_0_10_125=poweroff",
+			"CMD_192_0_2_20='~/shutdown.sh'\nCMD_10_0_10_125='poweroff'",
+		},
+		{
+			// The conf is `source`d. Unquoted, this line parses as an env
+			// assignment plus a *local* `/sbin/shutdown -h now` — the daemon
+			// powering off the NUT server it runs on, every restart.
+			"multi-word command stays one value (the DSM case)",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "syn", User: "rtorcato", Address: "10.0.10.126", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: "sudo /sbin/shutdown -h now"}},
+			}},
+			"CMD_10_0_10_126='sudo /sbin/shutdown -h now'",
+		},
+		{
+			"embedded single quote is escaped",
+			&inventory.Inventory{Hosts: []inventory.Host{
+				{Name: "x", User: "root", Address: "192.0.2.30", Roles: []inventory.Role{inventory.RoleShutdownTarget}, Shutdown: &inventory.Shutdown{Command: `sh -c 'poweroff'`}},
+			}},
+			`CMD_192_0_2_30='sh -c '\''poweroff'\'''`,
 		},
 	}
 	for _, tc := range cases {
@@ -350,7 +367,7 @@ func TestShutdownDaemon_PlanSurfacesPerTargetCommands(t *testing.T) {
 		t.Fatalf("Plan: %v", err)
 	}
 	joined := strings.Join(d.Actions, "\n")
-	if !strings.Contains(joined, "CMD_10_0_10_125=poweroff") {
+	if !strings.Contains(joined, "CMD_10_0_10_125='poweroff'") {
 		t.Errorf("Plan should surface the per-target command override, got:\n%s", joined)
 	}
 }

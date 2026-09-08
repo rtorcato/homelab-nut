@@ -73,7 +73,10 @@ func remoteCmdsFromInventory(inv *inventory.Inventory) string {
 		if !h.HasRole(inventory.RoleShutdownTarget) || h.Shutdown == nil || h.Shutdown.Command == "" {
 			continue
 		}
-		lines = append(lines, fmt.Sprintf("CMD_%s=%s", sanitizeNodeHost(h.Address), h.Shutdown.Command))
+		// Quoted: the conf is `source`d by battery-shutdown.sh, so an unquoted
+		// multi-word command (`sudo /sbin/shutdown -h now`) parses as an env
+		// assignment *plus a local command* — powering off the NUT server itself.
+		lines = append(lines, fmt.Sprintf("CMD_%s=%s", sanitizeNodeHost(h.Address), shellQuote(h.Shutdown.Command)))
 	}
 	return strings.Join(lines, "\n")
 }

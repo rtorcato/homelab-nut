@@ -299,14 +299,48 @@ echo 'standby 0' | cec-client -s -d 1
 
 ## Other Devices
 
-### Synology NAS
+### Synology NAS (DSM 7)
+
+The native `homelab-nut` path — add the NAS as a `shutdown-target` and let the
+daemon stage it:
 
 ```yaml
-# Home Assistant shell command
-shell_command:
-  shutdown_synology: >
-    ssh admin@192.168.1.100 'sudo shutdown -h now'
+  - name: synology
+    address: 192.0.2.26
+    user: rtorcato            # NOT root — see below
+    roles:
+      - shutdown-target
+    shutdown:
+      command: "sudo /sbin/shutdown -h now"
+      threshold: 60           # shed early, while there's runtime to flush volumes
 ```
+
+Three DSM-specific gotchas:
+
+1. **DSM 7 refuses root SSH.** Use an account in the `administrators` group and
+   go through `sudo`. Verify with `id` — you want `groups=...,101(administrators)`.
+2. **`sudo` needs a NOPASSWD rule.** The `shutdown-target` role installs
+   `/etc/sudoers.d/ups-shutdown`, but that first `sudo` itself prompts for a
+   password and `apply` has no TTY, so it fails on a fresh box. Install it by
+   hand once, then `apply` is idempotent:
+
+   ```bash
+   ssh rtorcato@192.0.2.26 \
+     "echo 'rtorcato ALL=(ALL) NOPASSWD: /sbin/shutdown' | sudo tee /etc/sudoers.d/ups-shutdown"
+   ```
+3. **DSM wipes `/etc/sudoers.d` on major updates** — same failure mode as UniFi
+   OS and `authorized_keys`. If shutdown silently stops working after a DSM
+   upgrade, re-run the command above.
+
+Enable SSH first under **Control Panel → Terminal & SNMP → Enable SSH service**,
+and add the daemon's public key (printed by `apply`) to
+`/var/services/homes/<user>/.ssh/authorized_keys`.
+
+> **Why not DSM's built-in UPS client?** Control Panel → Hardware & Power → UPS
+> can point DSM at a NUT server, but it connects as the hardcoded `monuser` /
+> `secret` and shuts down on **FSD or its own idle timer** — it cannot fire at a
+> battery percentage. If you want "power off at 60%", use the `shutdown-target`
+> path above.
 
 Or use Synology's API:
 ```bash

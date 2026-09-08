@@ -373,7 +373,9 @@ hosts:
     user: admin
     roles: [nut-client, shutdown-target]
     shutdown:                    # used when host has role `shutdown-target`
-      command: ~/shutdown.sh     # path → deployed; bare cmd (e.g. `poweroff`) → sent inline
+      command: ~/shutdown.sh     # path → deployed; bare cmd (e.g. `poweroff`) → sent inline.
+                                 # May contain arguments (`sudo /sbin/shutdown -h now`) — it is
+                                 # shell-quoted into the daemon's conf, so it stays one value
       delay: 0                   # optional; seconds the daemon waits before sending this
                                  # target's shutdown (sequence dependents, e.g. gateway last)
       threshold: 60              # optional; 1-99 (% battery) — fire THIS target at its own
