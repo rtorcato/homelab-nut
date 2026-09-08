@@ -266,6 +266,45 @@ sudo systemctl enable --now nut-client
 
 </details>
 
+<details>
+<summary><b>How SSH authentication works</b></summary>
+
+**The inventory holds no credentials.** A host entry carries only `user` and `address` — never a password, never a key path. There are two independent SSH hops, and they authenticate differently:
+
+**1. Your laptop → host** (at `plan` / `apply` / `shutdown test` time)
+
+| | |
+|---|---|
+| Identity | `ssh-agent` first (when `SSH_AUTH_SOCK` is set), then `~/.ssh/id_ed25519`, then `~/.ssh/id_rsa` |
+| Login as | the host's `user` field |
+| Host keys | strict `~/.ssh/known_hosts` — an unknown host fails with a `ssh-keyscan` hint rather than trusting blindly |
+| Passwords | never — key or agent only |
+| Port | 22, unless `address` is written `host:port` |
+
+> ⚠️ This uses the Go SSH client, which **does not read `~/.ssh/config`**. Your `Host` aliases, `ProxyJump`, and per-host `IdentityFile` blocks are ignored — put the routable address in the inventory and make sure the target is reachable directly.
+
+**2. Daemon host → shutdown-target** (at battery-trigger time)
+
+This hop does *not* involve your laptop. The `shutdown-daemon` host SSHes out on its own:
+
+| | |
+|---|---|
+| Runs as | the `homelab-nut` system user (unprivileged, created by `apply`) |
+| Identity | a dedicated key, `/var/lib/homelab-nut/.ssh/id_ed25519_ups`, generated on first `apply` |
+| Login as | the **target host's** `user` field from the inventory |
+| Command | the target's `shutdown.command`, shell-quoted into `/etc/ups-battery-shutdown.conf` |
+| Host keys | `StrictHostKeyChecking=no` (targets are often re-imaged appliances) |
+
+**`apply` prints that public key but does not install it.** You add it to each target's `~/.ssh/authorized_keys` yourself, for the user named in the inventory. Skip this and the daemon fails at trigger time with `Permission denied (publickey)` — with the UPS already on battery, which is the worst possible moment to discover it. Verify it up front:
+
+```bash
+homelab-nut shutdown test          # dry-runs the whole chain, powers nothing off
+```
+
+Appliances that wipe `authorized_keys` on firmware updates (UniFi OS, DSM) need the key re-added afterwards.
+
+</details>
+
 ## Supported platforms
 
 Debian / Ubuntu (primary), Raspberry Pi OS, Proxmox VE, TrueNAS, anywhere `apt`/`systemd` work. RHEL/Fedora and Alpine are on the roadmap.
