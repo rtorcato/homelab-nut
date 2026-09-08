@@ -2,6 +2,17 @@
 
 This guide covers configuring NUT client on machines that need to monitor a remote UPS and shut down gracefully during power events.
 
+> **Is the UPS plugged into this machine?** Then you want
+> [Server Setup](server-setup.md), not this guide — even if the machine is not
+> "a server" in any other sense. A client sets `MODE=netclient`, which stops
+> `upsd` from starting, so a locally attached UPS is never published and nothing
+> can read it, this host included. It fails silently — see
+> [Driver is running but `upsc` says "Connection refused"](#driver-is-running-but-upsc-says-connection-refused).
+>
+> ```bash
+> lsusb | grep -iE 'ups|cyber|apc|eaton|tripp'   # any output => use setup-server
+> ```
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -421,6 +432,57 @@ nc -zv 192.168.1.10 3493
 # Check firewall on server
 sudo ufw status  # Ubuntu
 sudo firewall-cmd --list-ports  # RHEL
+```
+
+### Driver is running but `upsc` says "Connection refused"
+
+This one is worth knowing about because **every indicator says healthy**. It
+happens when the UPS is attached to a machine that was configured as a client:
+
+```console
+$ systemctl is-active nut-driver@myups nut-monitor nut-exporter
+active
+active
+active
+
+$ upsc -l
+Error: Connection failure: Connection refused
+
+$ ss -tlnp | grep 3493
+(nothing)
+```
+
+The driver genuinely is talking to the UPS. What is missing is `upsd`. A client
+sets `MODE=netclient` in `/etc/nut/nut.conf`, which tells `nut-server` not to
+start, so there is nothing to publish the driver's readings to:
+
+```bash
+sudo grep ^MODE /etc/nut/nut.conf
+journalctl -u nut-server -n 5 --no-pager
+# upsd disabled, please adjust the configuration to your needs
+# Then set MODE to a suitable value in /etc/nut/nut.conf to enable it
+```
+
+That message is logged once at boot and the unit then deactivates *successfully*,
+so nothing later reports a fault. There is no visible difference between "this
+host was never set up" and "this host is misconfigured" — both show no UPS data
+anywhere, which is why this can sit unnoticed for a long time.
+
+Two consequences worth checking for, because neither announces itself:
+
+- Anything reading the UPS — an exporter, a dashboard, a shutdown daemon — has
+  been reading nothing, however healthy its own service looks.
+- If `upsmon.conf` still points at some *other* host from an earlier setup, this
+  machine is monitoring a UPS it does not have. On a real outage it shuts down
+  nothing.
+
+**Fix:** run [Server Setup](server-setup.md) on this machine instead. It sets
+`MODE=netserver`, starts `upsd`, and configures `upsmon` as `primary` — the role
+for the host the UPS is physically attached to.
+
+```bash
+sudo ./scripts/setup-server.sh <ups-name> usbhid-ups
+upsc <ups-name>@localhost     # should now return battery.charge, ups.load, ...
 ```
 
 ### "Access denied"

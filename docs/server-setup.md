@@ -337,6 +337,23 @@ upsc myups@<server-ip>
 
 ### Common Issues
 
+#### Driver starts, but nothing listens on 3493
+
+If `nut-driver@<ups>` is active and reports "Startup successful" while `upsc`
+returns `Connection refused`, this machine is probably configured as a *client*:
+
+```bash
+sudo grep ^MODE /etc/nut/nut.conf     # netclient => upsd will not start
+```
+
+`MODE=netclient` stops `nut-server` from starting, so a locally attached UPS is
+never published. It is a quiet failure — the driver works, every service reads
+active, and nothing reports a fault. Full write-up in
+[Client Setup → Driver is running but `upsc` says "Connection refused"](client-setup.md#driver-is-running-but-upsc-says-connection-refused).
+
+Re-running this guide's setup on the machine fixes it: `MODE=netserver`, `upsd`
+started, and `upsmon` as `primary`.
+
 #### "Can't connect to UPS"
 
 ```bash
