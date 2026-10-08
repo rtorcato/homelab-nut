@@ -1,10 +1,14 @@
 {
-  "extends": "@docusaurus/tsconfig",
+  // Extends the repo-tooling React preset (strict). Docusaurus resolves
+  // `@site/*` from this directory, and the preset's `types` list names vitest,
+  // which this site doesn't install, so both are overridden here.
+  "extends": "@rtorcato/repo-tooling/typescript/react",
   "compilerOptions": {
-    "baseUrl": ".",
+    "types": ["react", "@docusaurus/module-type-aliases"],
     "paths": {
-      "@site/*": ["./*"]
+      "@site/*": ["${configDir}/*"]
     }
   },
+  "include": ["src", "tests", "docusaurus.config.ts", "sidebars.ts", "playwright.config.ts"],
   "exclude": ["build", ".docusaurus", "node_modules"]
 }
