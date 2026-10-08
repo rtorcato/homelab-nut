@@ -21,4 +21,4 @@ homelab-nut inventory validate -i examples/inventories/minimal.yaml
 ```
 
 The schema and per-field rules are documented in [AGENTS.md](../../AGENTS.md#inventory-schema)
-and the [docs site](https://rtorcato.github.io/homelab-nut/docs/intro).
+and the [docs site](https://docs.torcato.dev/homelab-nut/docs/intro).

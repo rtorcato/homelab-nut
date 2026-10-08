@@ -77,7 +77,7 @@ Full agent contract in **[AGENTS.md](AGENTS.md)** — common flows, JSON schemas
 
 ## Demo
 
-> **Asciinema cast + TUI screenshots:** coming in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5) alongside Homebrew packaging. Until then, the [docs site](https://rtorcato.github.io/homelab-nut/) carries an auto-generated CLI reference rendered from cobra.
+> **Asciinema cast + TUI screenshots:** coming in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5) alongside Homebrew packaging. Until then, the [docs site](https://docs.torcato.dev/homelab-nut/) carries an auto-generated CLI reference rendered from cobra.
 
 ## Exit codes
 
@@ -158,7 +158,7 @@ If you're running 1–10 machines and want them to power down cleanly when the U
 | [Roadmap](ROADMAP.md) | Where this is heading |
 | [TODOs](TODOS.md) | Live status of open work |
 | [AGENTS.md](AGENTS.md) | LLM-friendly subcommand contract for AI agents + scripts |
-| **[Docs site](https://rtorcato.github.io/homelab-nut/)** | Full reference + auto-generated CLI docs |
+| **[Docs site](https://docs.torcato.dev/homelab-nut/)** | Full reference + auto-generated CLI docs |
 
 ---
 
