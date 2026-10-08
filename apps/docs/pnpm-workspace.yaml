@@ -2,5 +2,11 @@
 # Listed packages have postinstall scripts that pnpm blocks by default
 # for security. We explicitly opt-in to the ones we need.
 allowBuilds:
-  '@biomejs/biome': true   # CLI binary — needed for `pnpm lint`
-  core-js: false           # polyfill — no scripts required
+  '@biomejs/biome': true # CLI binary — needed for `pnpm lint`
+  core-js: false # polyfill — no scripts required
+minimumReleaseAgeExclude:
+  - '@rtorcato/*'
+
+# Don't re-verify node_modules on every script run — the check costs a
+# second per invocation and CI installs with --frozen-lockfile anyway.
+verifyDepsBeforeRun: false

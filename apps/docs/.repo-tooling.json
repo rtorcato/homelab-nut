@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.torcato.dev/repo-tooling/schemas/lockfile.json",
+  "version": 4,
+  "record": {
+    "config": {
+      "projectName": "@rtorcato/homelab-nut-docs",
+      "language": "js",
+      "projectType": "react-app",
+      "typescript": {
+        "enabled": true,
+        "config": "react"
+      },
+      "linting": {
+        "tool": "biome",
+        "eslintConfig": "base"
+      },
+      "formatting": {
+        "tool": "biome"
+      },
+      "testing": {
+        "framework": "playwright",
+        "environment": "browser"
+      },
+      "gitHooks": false,
+      "commitLint": false,
+      "semanticRelease": false,
+      "securityAutomation": false,
+      "bundler": "none",
+      "docs": {
+        "url": "https://rtorcato.github.io/homelab-nut/",
+        "deploy": "github"
+      }
+    },
+    "writtenBy": "@rtorcato/repo-tooling@6.0.0",
+    "writtenAt": "2026-10-08T11:28:38.346Z"
+  },
+  "rules": {
+    "mcp": {
+      "recommended": []
+    },
+    "exceptions": {}
+  }
+}

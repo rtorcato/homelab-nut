@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.torcato.dev/repo-ai/repo-ai.json",
+  "pollSeconds": 180,
+  "budgetTokens": 400000,
+  "quietStopMinutes": 120,
+  "autoMerge": false,
+  "maxInFlight": 6,
+  "maxFixRounds": 2,
+  "maxTasksPerTick": 8,
+  "staleMinutes": 45,
+  "busyMinutes": 10,
+  "idleMinutes": 30,
+  "dependabotStallMinutes": 30,
+  "ciWorkflow": "go-ci.yml"
+}
