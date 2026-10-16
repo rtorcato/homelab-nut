@@ -51,8 +51,12 @@ jobs:
         working-directory: apps/docs
         run: pnpm typecheck
 
+      # Read-only (job is contents: read). Docs builds that call the GitHub API, e.g. to
+      # sync release notes, otherwise share the runner IP's 60/hr unauthenticated limit.
       - name: Build
         working-directory: apps/docs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: pnpm build
 
       - name: Upload site artifact
@@ -99,7 +103,7 @@ jobs:
           path: apps/docs/playwright-report
           retention-days: 7
 
-  # Inlines rtorcato/repo-tooling's docs-deploy-cloudflare.yml (v6.0.0) rather than
+  # Inlines rtorcato/repo-tooling's docs-deploy-cloudflare.yml (v6.1.1) rather than
   # calling it: that reusable workflow installs and builds from a root pnpm
   # workspace, and this Go repo keeps its only package.json in apps/docs.
   # Deploys the artifact the build job made, so there is no second build.
