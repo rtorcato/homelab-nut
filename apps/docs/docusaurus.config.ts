@@ -90,13 +90,22 @@ const config: Config = {
 			logo: {
 				alt: 'homelab-nut',
 				src: 'img/logo.svg',
+				srcDark: 'img/logo-dark.svg',
+				width: 32,
+				height: 32,
 			},
 			items: [
+				// Each item lights up only on its own section (DESIGN.md › Navbar).
 				{
-					type: 'doc',
-					docId: 'intro',
+					to: '/docs/intro',
 					position: 'left',
 					label: 'Docs',
+					activeBaseRegex: '/docs/(intro|contributing)$',
+				},
+				{
+					to: '/docs/guides',
+					position: 'left',
+					label: 'Guides',
 				},
 				{
 					to: '/docs/cli',
@@ -121,8 +130,9 @@ const config: Config = {
 				{
 					title: 'Docs',
 					items: [
-						{ label: 'Getting Started', to: '/docs/intro' },
-						{ label: 'CLI Reference', to: '/docs/cli' },
+						{ label: 'Getting started', to: '/docs/intro' },
+						{ label: 'Guides', to: '/docs/guides' },
+						{ label: 'CLI reference', to: '/docs/cli' },
 						{ label: 'Roadmap', to: '/docs/roadmap' },
 					],
 				},
