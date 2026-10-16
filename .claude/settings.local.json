@@ -11,6 +11,12 @@
       "Bash(gh issue *)",
       "Bash(golangci-lint run *)",
       "Bash(go test *)"
+    ],
+    "deny": [
+      "Bash(git -c *)",
+      "Bash(git config *)",
+      "Bash(git --config-env*)",
+      "Bash(git --exec-path*)"
     ]
   }
 }
