@@ -155,13 +155,13 @@ If you're running 1–10 machines and want them to power down cleanly when the U
 
 | Document | Description |
 |---|---|
-| [Server Setup](docs/server-setup.md) | Install and configure NUT server |
-| [Client Setup](docs/client-setup.md) | Configure clients to monitor a remote UPS |
+| [Server Setup](apps/docs/docs/guides/server-setup.md) | Install and configure NUT server |
+| [Client Setup](apps/docs/docs/guides/client-setup.md) | Configure clients to monitor a remote UPS |
 | [CLI Reference](docs/cli-reference.md) | NUT command-line tools and usage |
-| [Docker Setup](docs/docker-setup.md) | Docker stack: nut-webgui + Prometheus exporter |
-| [Notifications](docs/notifications.md) | Slack, Discord, Pushover, Telegram |
-| [Smart Shutdown](docs/smart-shutdown.md) | UniFi, LG TVs, NAS via Home Assistant |
-| [Prometheus + Grafana](docs/prometheus-grafana.md) | Scrape config + importable dashboard |
+| [Docker Setup](apps/docs/docs/guides/docker-setup.md) | Docker stack: nut-webgui + Prometheus exporter |
+| [Notifications](apps/docs/docs/guides/notifications/index.md) | Slack, Discord, Pushover, Telegram |
+| [Smart Shutdown](apps/docs/docs/guides/smart-shutdown.md) | UniFi, LG TVs, NAS via Home Assistant |
+| [Prometheus + Grafana](apps/docs/docs/guides/prometheus-grafana.md) | Scrape config + importable dashboard |
 | [Roadmap](ROADMAP.md) | Where this is heading |
 | [TODOs](TODOS.md) | Live status of open work |
 | [AGENTS.md](AGENTS.md) | LLM-friendly subcommand contract for AI agents + scripts |
@@ -201,7 +201,7 @@ docker compose up -d
 - **Web UI** (nut-webgui): http://localhost:9000
 - **Prometheus exporter**: http://localhost:9199/ups_metrics
 
-Prometheus and Grafana are intentionally not included — host them elsewhere and point them at this host's exporter. See [docs/prometheus-grafana.md](docs/prometheus-grafana.md) for setup.
+Prometheus and Grafana are intentionally not included — host them elsewhere and point them at this host's exporter. See [apps/docs/docs/guides/prometheus-grafana.md](apps/docs/docs/guides/prometheus-grafana.md) for setup.
 
 </details>
 

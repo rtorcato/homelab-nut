@@ -544,6 +544,6 @@ sudo chmod 640 /etc/nut/upsmon.conf
 
 ## Next Steps
 
-- [Learn NUT CLI commands](cli-reference.md) for monitoring and testing
+- [Learn NUT CLI commands](/docs/cli) for monitoring and testing
 - Set up monitoring dashboards (Grafana, Home Assistant)
 - Configure automated notifications

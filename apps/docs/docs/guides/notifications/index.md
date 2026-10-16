@@ -520,7 +520,7 @@ NOTIFYCMD /usr/sbin/upssched
 
 ## Home Assistant Integration
 
-For the most flexible notifications, integrate with Home Assistant. See [Smart Device Shutdown](smart-shutdown.md) for full details.
+For the most flexible notifications, integrate with Home Assistant. See [Smart Device Shutdown](../smart-shutdown.md) for full details.
 
 ### Basic Home Assistant Notification
 

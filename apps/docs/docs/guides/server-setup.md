@@ -415,4 +415,4 @@ sudo upsmon -D
 ## Next Steps
 
 - [Configure NUT Clients](client-setup.md) on other machines
-- [Learn NUT CLI commands](cli-reference.md) for monitoring and management
+- [Learn NUT CLI commands](/docs/cli) for monitoring and management
