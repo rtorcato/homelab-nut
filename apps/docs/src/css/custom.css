@@ -1,10 +1,9 @@
 /**
- * homelab-nut — Docusaurus theme.
+ * homelab-nut — Docusaurus theme. Spec: DESIGN.md at the repo root.
  *
- * Palette sampled from cover.png: deep navy field, bright emerald for the
- * primary accent, warm amber for the mascot / daemon / automation
- * callouts. Dark mode is the headline; light mode is polished but
- * secondary.
+ * One navy field (emerald accent) in dark mode, white in light mode; the
+ * footer is one step lighter. Every text colour here passes WCAG AA in
+ * both themes; check DESIGN.md's contrast table before adding one.
  */
 
 /* ---------- Fonts ---------- */
@@ -16,44 +15,63 @@
 	--ifm-code-font-size: 92%;
 }
 
-/* ---------- Custom design tokens ---------- */
+/* ---------- Tokens: light ---------- */
 :root {
-	--hn-accent: #10b981; /* emerald-500 — primary */
-	--hn-accent-strong: #059669; /* emerald-600 — hover/active */
-	--hn-accent-soft: rgba(16, 185, 129, 0.12);
-	--hn-mascot: #fb923c; /* amber-400 — daemon/automation callouts */
-	--hn-bg-deep: #0a1422;
-	--hn-surface: #0f1c2e;
-	--hn-surface-2: #142841;
-	--hn-border: rgba(148, 163, 184, 0.18);
-	--hn-text-bright: #e9f5ee;
-	--hn-text-muted: #9aa4b2;
-	--hn-glow: 0 0 40px -8px rgba(16, 185, 129, 0.4);
-}
+	--hn-bg: #ffffff;
+	--hn-surface: #f6f9f8;
+	--hn-surface-2: #eef3f1;
+	--hn-border: rgba(10, 20, 34, 0.1);
+	--hn-text-bright: #0a1422;
+	--hn-text: #374151;
+	--hn-text-muted: #5b6675;
+	--hn-accent: #047857;
+	--hn-accent-ui: #047857;
+	--hn-on-accent: #ffffff;
+	--hn-accent-soft: rgba(5, 150, 105, 0.1);
+	--hn-mascot: #b45309;
+	--hn-code-bg: #f3f6f9;
+	--hn-comment: #5b6675;
+	--hn-glow: none;
 
-/* ---------- Light theme ---------- */
-:root {
-	--ifm-color-primary: #059669;
-	--ifm-color-primary-dark: #047857;
-	--ifm-color-primary-darker: #047054;
-	--ifm-color-primary-darkest: #035c45;
-	--ifm-color-primary-light: #10b981;
-	--ifm-color-primary-lighter: #34d399;
-	--ifm-color-primary-lightest: #6ee7b7;
+	--ifm-color-primary: #047857;
+	--ifm-color-primary-dark: #046c4e;
+	--ifm-color-primary-darker: #03664a;
+	--ifm-color-primary-darkest: #03543d;
+	--ifm-color-primary-light: #1d8668;
+	--ifm-color-primary-lighter: #2a8c70;
+	--ifm-color-primary-lightest: #4fa089;
 
-	--ifm-background-color: #ffffff;
-	--ifm-background-surface-color: #f7faf9;
-	--ifm-navbar-background-color: rgba(255, 255, 255, 0.85);
-	--ifm-heading-color: #0a1422;
-	--ifm-font-color-base: #374151;
-	--ifm-link-color: #059669;
-	--ifm-toc-border-color: rgba(15, 28, 46, 0.1);
-	--ifm-code-background: #f3f6f9;
+	--ifm-background-color: var(--hn-bg);
+	--ifm-background-surface-color: var(--hn-surface);
+	--ifm-navbar-background-color: color-mix(in srgb, var(--hn-bg) 88%, transparent);
+	--ifm-footer-background-color: var(--hn-surface);
+	--ifm-heading-color: var(--hn-text-bright);
+	--ifm-font-color-base: var(--hn-text);
+	--ifm-link-color: var(--hn-accent);
+	--ifm-toc-border-color: var(--hn-border);
+	--ifm-code-background: var(--hn-code-bg);
 	--docusaurus-highlighted-code-line-bg: rgba(16, 185, 129, 0.12);
 }
 
-/* ---------- Dark theme (default) ---------- */
-[data-theme="dark"] {
+/* ---------- Tokens: dark (default) ---------- */
+/* html[...] to match the specificity of Infima's own dark block. */
+html[data-theme="dark"] {
+	--hn-bg: #0a1422;
+	--hn-surface: #0f1c2e;
+	--hn-surface-2: #142841;
+	--hn-border: rgba(148, 163, 184, 0.16);
+	--hn-text-bright: #e9f5ee;
+	--hn-text: #b4bfcc;
+	--hn-text-muted: #9aa4b2;
+	--hn-accent: #34d399;
+	--hn-accent-ui: #10b981;
+	--hn-on-accent: #06231a;
+	--hn-accent-soft: rgba(16, 185, 129, 0.12);
+	--hn-mascot: #fb923c;
+	--hn-code-bg: #0f1c2e;
+	--hn-comment: #8b9bc4;
+	--hn-glow: 0 0 60px -12px rgba(16, 185, 129, 0.45);
+
 	--ifm-color-primary: #10b981;
 	--ifm-color-primary-dark: #0ea671;
 	--ifm-color-primary-darker: #0d9c6b;
@@ -62,170 +80,504 @@
 	--ifm-color-primary-lighter: #4ade80;
 	--ifm-color-primary-lightest: #6ee7b7;
 
-	--ifm-background-color: var(--hn-bg-deep);
+	/* Infima sets these for dark mode too, so restate them here. */
+	--ifm-background-color: var(--hn-bg);
 	--ifm-background-surface-color: var(--hn-surface);
-	--ifm-navbar-background-color: rgba(10, 20, 34, 0.85);
+	--ifm-navbar-background-color: color-mix(in srgb, var(--hn-bg) 88%, transparent);
 	--ifm-footer-background-color: var(--hn-surface);
 	--ifm-heading-color: var(--hn-text-bright);
-	--ifm-font-color-base: var(--hn-text-muted);
-	--ifm-link-color: var(--hn-accent);
+	--ifm-font-color-base: var(--hn-text);
+	--ifm-link-color: #34d399;
 	--ifm-toc-border-color: var(--hn-border);
-	--ifm-code-background: var(--hn-surface-2);
+	--ifm-code-background: var(--hn-code-bg);
 	--docusaurus-highlighted-code-line-bg: rgba(16, 185, 129, 0.18);
 }
 
-/* ---------- Components ---------- */
+/* ---------- Page chrome ---------- */
 
-/* Hero — glowing emerald CTA */
-.hn-hero {
-	padding: 4rem 2rem 5rem;
-	text-align: center;
-	background: radial-gradient(60% 80% at 50% 0%, rgba(16, 185, 129, 0.12), transparent 70%),
-		linear-gradient(180deg, var(--hn-bg-deep) 0%, var(--hn-surface) 100%);
+/* No sideways scroll from 320px up: wide children scroll in their own box. */
+html,
+body {
+	overflow-x: clip;
+}
+
+.navbar {
 	border-bottom: 1px solid var(--hn-border);
+	box-shadow: none;
+	backdrop-filter: blur(8px);
 }
 
-[data-theme="light"] .hn-hero {
-	background: radial-gradient(60% 80% at 50% 0%, rgba(16, 185, 129, 0.08), transparent 70%),
-		linear-gradient(180deg, #ffffff 0%, #f7faf9 100%);
+.navbar__logo {
+	height: 32px;
 }
 
-.hn-hero__banner {
-	max-width: 720px;
-	width: 100%;
-	border-radius: 16px;
-	margin: 0 auto 2rem;
-	display: block;
+.navbar__brand {
+	gap: 2px;
 }
 
-.hn-hero__title {
-	font-size: clamp(2rem, 5vw, 3.5rem);
-	font-weight: 800;
-	margin: 0 0 0.5rem;
-	letter-spacing: -0.02em;
+.footer {
+	border-top: 1px solid var(--hn-border);
 }
 
-.hn-hero__tagline {
-	font-size: 1.25rem;
+/* `style: 'dark'` would force Infima's slate footer; keep it on our field. */
+.footer--dark {
+	--ifm-footer-background-color: var(--hn-surface);
+	--ifm-footer-color: var(--hn-text);
+	--ifm-footer-link-color: var(--hn-text);
+	--ifm-footer-title-color: var(--hn-text-bright);
+}
+
+.footer__copyright {
 	color: var(--hn-text-muted);
-	margin: 0 0 2rem;
+	font-size: 13px;
 }
 
-[data-theme="light"] .hn-hero__tagline {
-	color: #5b6675;
+/* Doc H1: 40px (30px on mobile) */
+.markdown h1 {
+	font-size: 40px;
+	letter-spacing: -0.03em;
 }
 
-.hn-hero__ctas {
+/* Sidebar: active item */
+.menu__link--active:not(.menu__link--sublist) {
+	background: var(--hn-accent-soft);
+	color: var(--hn-accent);
+	font-weight: 600;
+}
+
+/* Prism: comment tokens and block background (DESIGN.md › Code blocks) */
+.prism-code {
+	background-color: var(--hn-code-bg) !important;
+}
+
+.prism-code .token.comment,
+.prism-code .token.prolog,
+.prism-code .token.doctype,
+.prism-code .token.cdata {
+	color: var(--hn-comment) !important;
+}
+
+/* ---------- Home ---------- */
+
+.hn-home {
+	--hn-wrap: 1160px;
+}
+
+.hn-section {
+	max-width: var(--hn-wrap);
+	margin: 0 auto;
+	padding: 56px 32px;
+}
+
+.hn-section h2 {
+	font-size: 28px;
+	letter-spacing: -0.02em;
+	margin: 0 0 6px;
+}
+
+.hn-hint {
+	color: var(--hn-text-muted);
+	margin: 0 0 28px;
+}
+
+/* Hero */
+.hn-hero {
+	position: relative;
+	overflow: hidden;
+}
+
+.hn-hero::before {
+	content: "";
+	position: absolute;
+	top: -200px;
+	right: -10%;
+	width: 900px;
+	height: 700px;
+	background: radial-gradient(closest-side, var(--hn-accent-soft), transparent 70%);
+	pointer-events: none;
+}
+
+.hn-hero__inner {
+	position: relative;
+	max-width: var(--hn-wrap);
+	margin: 0 auto;
+	padding: 72px 32px 56px;
+	display: grid;
+	grid-template-columns: 1.1fr 0.9fr;
+	gap: 40px;
+	align-items: center;
+}
+
+.hn-hero__copy {
+	min-width: 0;
+}
+
+.hn-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 12px;
+	border-radius: 999px;
+	border: 1px solid var(--hn-border);
+	background: var(--hn-surface);
+	font: 500 13px / 1 var(--ifm-font-family-monospace);
+	color: var(--hn-text-muted);
+}
+
+.hn-pill b {
+	color: var(--hn-mascot);
+	font-weight: 600;
+}
+
+.hn-wordmark {
+	font-size: clamp(44px, 6vw, 72px);
+	font-weight: 800;
+	letter-spacing: -0.04em;
+	line-height: 1;
+	margin: 22px 0 14px;
+}
+
+.hn-wordmark span {
+	color: var(--hn-accent);
+}
+
+.hn-lead {
+	font-size: clamp(20px, 2.2vw, 26px);
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	color: var(--hn-text-bright);
+	margin: 0 0 10px;
+}
+
+.hn-sub {
+	font-size: 17px;
+	color: var(--hn-text-muted);
+	max-width: 520px;
+	margin: 0 0 28px;
+}
+
+.hn-ctas {
 	display: flex;
-	gap: 0.75rem;
-	justify-content: center;
+	gap: 12px;
 	flex-wrap: wrap;
 }
 
 .hn-btn {
+	min-height: 46px;
 	display: inline-flex;
 	align-items: center;
-	gap: 0.5rem;
-	padding: 0.65rem 1.4rem;
-	border-radius: 8px;
+	justify-content: center;
+	gap: 8px;
+	padding: 0 20px;
+	border-radius: 10px;
+	border: 1px solid var(--hn-border);
+	background: var(--hn-surface);
+	color: var(--hn-text-bright);
+	font-size: 16px;
 	font-weight: 600;
-	text-decoration: none;
-	transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.hn-btn--primary {
-	background: var(--hn-accent);
-	color: #06231a;
+.hn-btn:hover {
+	color: var(--hn-text-bright);
+	text-decoration: none;
+	border-color: var(--hn-accent);
+}
+
+.hn-btn--primary,
+.hn-btn--primary:hover {
+	background: var(--hn-accent-ui);
+	border-color: transparent;
+	color: var(--hn-on-accent);
 	box-shadow: var(--hn-glow);
 }
 
 .hn-btn--primary:hover {
-	transform: translateY(-1px);
-	background: var(--hn-accent-strong);
-	color: #06231a;
-	text-decoration: none;
+	filter: brightness(1.08);
 }
 
-.hn-btn--ghost {
-	background: transparent;
-	color: var(--ifm-heading-color);
+/* Install line: Docusaurus CodeBlock supplies the copy button. */
+.hn-install {
+	margin-top: 22px;
+	max-width: 520px;
+}
+
+.hn-install .theme-code-block {
+	margin: 0;
 	border: 1px solid var(--hn-border);
+	border-radius: 10px;
+	box-shadow: none;
 }
 
-.hn-btn--ghost:hover {
+.hn-install pre {
+	font-size: 14px;
+}
+
+.hn-install .token-line:first-child::before {
+	content: "$ ";
+	color: var(--hn-accent);
+	user-select: none;
+}
+
+.hn-mascot {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	min-width: 0;
+}
+
+/* ThemedImage forces display: initial on the img, so size the wrapper. */
+.hn-mascot__img {
+	width: min(400px, 100%);
+}
+
+.hn-mascot__img img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+[data-theme="dark"] .hn-mascot__img img {
+	filter: drop-shadow(0 0 24px rgba(16, 185, 129, 0.25));
+}
+
+.hn-status {
+	position: absolute;
+	left: 0;
+	bottom: 48px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 10px 14px;
+	border-radius: 10px;
+	border: 1px solid var(--hn-border);
+	background: var(--hn-surface);
+	font: 12px / 1.5 var(--ifm-font-family-monospace);
+	color: var(--hn-text-muted);
+	box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.4);
+}
+
+.hn-status b {
+	color: var(--hn-text-bright);
+	font-weight: 600;
+}
+
+.hn-status__ol {
+	display: inline-block;
+	padding: 0 6px;
+	margin-right: 6px;
+	border-radius: 4px;
+	background: var(--hn-accent-ui);
+	color: var(--hn-on-accent);
+	font-weight: 700;
+}
+
+/* Feature cards */
+.hn-features {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 16px;
+}
+
+.hn-card {
+	padding: 22px;
+	border-radius: 14px;
+	border: 1px solid var(--hn-border);
+	background: var(--hn-surface);
+}
+
+.hn-card svg {
+	display: block;
+	color: var(--hn-accent);
+}
+
+.hn-card h3 {
+	font-size: 16px;
+	margin: 12px 0 6px;
+}
+
+.hn-card p {
+	margin: 0;
+	font-size: 14.5px;
+	line-height: 1.55;
+	color: var(--hn-text-muted);
+}
+
+/* "What the CLI looks like" */
+.hn-split {
+	display: grid;
+	grid-template-columns: 0.8fr 1.2fr;
+	gap: 36px;
+	align-items: center;
+}
+
+.hn-split > * {
+	min-width: 0;
+}
+
+.hn-steps {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.hn-steps li {
+	display: grid;
+	grid-template-columns: 28px 1fr;
+	gap: 12px;
+	margin: 0;
+}
+
+.hn-steps__n {
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	display: grid;
+	place-items: center;
 	background: var(--hn-accent-soft);
 	color: var(--hn-accent);
-	text-decoration: none;
+	font: 600 13px var(--ifm-font-family-monospace);
 }
 
-/* Feature grid */
-.hn-features {
-	padding: 4rem 2rem;
-	max-width: 1100px;
-	margin: 0 auto;
+.hn-steps code {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--hn-text-bright);
+	font-size: 14.5px;
+	font-weight: 600;
 }
 
-.hn-features__grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-	gap: 1.25rem;
+.hn-steps p {
+	margin: 2px 0 0;
+	font-size: 14.5px;
+	color: var(--hn-text-muted);
 }
 
-.hn-feature {
-	padding: 1.5rem;
+.hn-term {
+	border-radius: 14px;
 	border: 1px solid var(--hn-border);
+	background: #22252c;
+	overflow: hidden;
+	box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
+}
+
+.hn-term__bar {
+	height: 34px;
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 0 14px;
+	background: #1a1c22;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hn-term__bar i {
+	width: 11px;
+	height: 11px;
+	border-radius: 50%;
+	background: #3a3f4a;
+}
+
+.hn-term__bar span {
+	margin-left: 8px;
+	font: 12px var(--ifm-font-family-monospace);
+	color: #8b93a1;
+}
+
+.hn-term img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* Guides grid */
+.hn-section--guides {
+	padding-top: 8px;
+}
+
+.hn-guides {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 12px;
+}
+
+.hn-guide {
+	min-height: 56px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 16px;
 	border-radius: 12px;
-	background: var(--ifm-background-surface-color);
-	transition: border-color 0.15s ease, transform 0.15s ease;
+	border: 1px solid var(--hn-border);
+	background: var(--hn-surface);
+	color: var(--hn-text-bright);
+	font-size: 15px;
+	font-weight: 600;
 }
 
-.hn-feature:hover {
+.hn-guide:hover {
+	color: var(--hn-text-bright);
+	text-decoration: none;
 	border-color: var(--hn-accent);
-	transform: translateY(-2px);
 }
 
-.hn-feature__icon {
-	width: 32px;
-	height: 32px;
-	color: var(--hn-accent);
-	margin-bottom: 0.75rem;
-}
-
-.hn-feature__title {
-	font-size: 1.05rem;
-	font-weight: 700;
-	margin: 0 0 0.4rem;
-	color: var(--ifm-heading-color);
-}
-
-.hn-feature__body {
-	font-size: 0.9rem;
+.hn-guide small {
+	display: block;
+	font-size: 13px;
+	font-weight: 400;
 	color: var(--hn-text-muted);
-	margin: 0;
-	line-height: 1.5;
 }
 
-[data-theme="light"] .hn-feature__body {
-	color: #5b6675;
-}
-
-/* Preview block — full-bleed code sample on the landing */
-.hn-preview {
-	padding: 3rem 2rem 5rem;
-	max-width: 920px;
-	margin: 0 auto;
-}
-
-.hn-preview__title {
-	font-size: 1.6rem;
-	font-weight: 700;
-	margin: 0 0 0.5rem;
-}
-
-.hn-preview__hint {
+.hn-guide__arrow {
+	margin-left: auto;
 	color: var(--hn-text-muted);
-	margin: 0 0 1.5rem;
-	font-size: 0.95rem;
+}
+
+/* ---------- Mobile (Infima's breakpoint) ---------- */
+@media (max-width: 996px) {
+	.hn-section {
+		padding: 36px 20px;
+	}
+
+	.hn-hero__inner {
+		grid-template-columns: 1fr;
+		padding: 36px 20px 32px;
+		gap: 8px;
+	}
+
+	.hn-mascot {
+		order: -1;
+	}
+
+	.hn-mascot__img {
+		width: 190px;
+	}
+
+	.hn-status {
+		display: none;
+	}
+
+	.hn-wordmark {
+		margin-top: 16px;
+	}
+
+	.hn-ctas .hn-btn {
+		flex: 1;
+	}
+
+	.hn-features,
+	.hn-guides,
+	.hn-split {
+		grid-template-columns: 1fr;
+	}
+
+	.markdown h1 {
+		font-size: 30px;
+	}
 }
 
 /* CLI reference pages (generated by cmd/gen-docs; see DESIGN.md).

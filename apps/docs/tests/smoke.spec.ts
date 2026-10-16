@@ -6,23 +6,33 @@ test.describe('homelab-nut docs site — smoke', () => {
 
 		// Hero
 		await expect(page).toHaveTitle(/homelab-nut/)
-		await expect(page.locator('.hn-hero__title')).toHaveText('homelab-nut')
-		await expect(page.locator('.hn-hero__tagline')).toContainText('Network UPS Tools')
+		await expect(page.locator('.hn-wordmark')).toHaveText('homelab-nut')
+		await expect(page.locator('.hn-lead')).toContainText('Network UPS Tools')
 
 		// Primary CTA is reachable
-		const cta = page.locator('a.hn-btn--primary', { hasText: 'Get Started' })
+		const cta = page.locator('a.hn-btn--primary', { hasText: 'Get started' })
 		await expect(cta).toBeVisible()
 
 		// Feature grid has all 4 cards
-		await expect(page.locator('.hn-feature')).toHaveCount(4)
+		await expect(page.locator('.hn-card')).toHaveCount(4)
 
-		// CLI preview code block renders
+		// CLI section: steps and the TUI screenshot
 		await expect(page.getByText('homelab-nut init').first()).toBeVisible()
+		await expect(page.locator('.hn-term img')).toBeVisible()
+	})
+
+	test('no sideways scroll on a 320px phone', async ({ page }) => {
+		await page.setViewportSize({ width: 320, height: 720 })
+		await page.goto('/homelab-nut/')
+		const overflow = await page.evaluate(
+			() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+		)
+		expect(overflow).toBe(0)
 	})
 
 	test('navigation reaches Getting Started', async ({ page }) => {
 		await page.goto('/homelab-nut/')
-		await page.locator('a.hn-btn--primary', { hasText: 'Get Started' }).click()
+		await page.locator('a.hn-btn--primary', { hasText: 'Get started' }).click()
 		await expect(page).toHaveURL(/\/docs\/intro/)
 		await expect(page.locator('h1')).toContainText('Getting Started')
 	})
