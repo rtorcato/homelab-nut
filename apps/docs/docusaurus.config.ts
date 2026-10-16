@@ -7,7 +7,7 @@ const config: Config = {
 	tagline: 'Network UPS Tools, set up from your laptop.',
 	favicon: 'img/favicon.svg',
 
-	url: 'https://rtorcato.github.io',
+	url: 'https://docs.torcato.dev',
 	baseUrl: '/homelab-nut/',
 
 	organizationName: 'rtorcato',
