@@ -25,7 +25,7 @@ Don't demote either path. If you add a TUI screen, expose the same capability as
 |---|---|
 | `make build` | Build `bin/homelab-nut` with ldflags-injected version |
 | `make test` | `go test -race -count=1 ./...` |
-| `make lint` | `golangci-lint run` (CI installs from source — see `.github/workflows/go-ci.yml`) |
+| `make lint` | `golangci-lint run` (CI installs from source — see `.github/workflows/ci.yml`) |
 | `make tidy` | `go mod tidy` |
 | `make run` | Build and launch the TUI |
 | `make snapshot` | Cross-compile via goreleaser (snapshot mode, no publish) |
@@ -116,7 +116,7 @@ docker/                      # Docker compose (nut-exporter + nut-webgui)
 
 `internal/roles/embedded/*.sh` are **byte-for-byte mirrors** of `/scripts/*.sh`. Required because Go's `//go:embed` can't reach out of the package directory with `..`.
 
-**If you edit any script in `/scripts/`, run `make embed-sync` before committing.** CI's `embed-sync drift check` (in `.github/workflows/go-ci.yml`) fails the build if the mirror diverges.
+**If you edit any script in `/scripts/`, run `make embed-sync` before committing.** CI's `embed-sync drift check` (in `.github/workflows/ci.yml`) fails the build if the mirror diverges.
 
 ---
 
@@ -128,7 +128,7 @@ Every `TODO` or `FIXME` in source code must reference a GitHub issue:
 // TODO(#42): handle multi-UPS hosts
 ```
 
-CI (`.github/workflows/todo-check.yml`) fails on any bare `TODO`/`FIXME` without a `(#NNN)` reference. The regex requires a comment marker (`//`, `#`, `/*`) before the token, so `context.TODO()` won't false-trigger.
+CI (`.github/workflows/ci.yml`) fails on any bare `TODO`/`FIXME` without a `(#NNN)` reference. The regex requires a comment marker (`//`, `#`, `/*`) before the token, so `context.TODO()` won't false-trigger.
 
 For temporary notes that aren't deferred work, use `NOTE` or `XXX` instead — they're not policed.
 

@@ -50,12 +50,117 @@ jobs:
         working-directory: docker
         run: docker compose -f compose.yml config --quiet
 
+  test:
+    name: build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: go mod tidy check
+        run: |
+          go mod tidy
+          if ! git diff --exit-code -- go.mod go.sum; then
+            echo "::error::go.mod or go.sum is out of date — run 'go mod tidy' locally"
+            exit 1
+          fi
+
+      - name: embed-sync drift check
+        run: |
+          make embed-sync
+          if ! git diff --exit-code -- internal/roles/embedded/; then
+            echo "::error::internal/roles/embedded/ is out of sync with /scripts — run 'make embed-sync' locally"
+            exit 1
+          fi
+
+      - name: build
+        run: go build -trimpath ./...
+
+      - name: test
+        run: go test -race -count=1 ./...
+
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Install golangci-lint from source
+        # The prebuilt golangci-lint binaries are compiled with an older
+        # Go than our 1.25 module floor, so they refuse to load go.mod.
+        # Installing via `go install` uses the runner's Go and avoids
+        # that mismatch.
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+
+      - name: Run golangci-lint
+        run: golangci-lint run --timeout=5m ./...
+
+  snapshot:
+    name: goreleaser snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --snapshot --clean --skip=publish
+
+  todo-check:
+    name: TODO/FIXME must reference an issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Scan for unlinked TODO/FIXME
+        run: |
+          set -e
+          # We enforce the policy in source code, not in docs (markdown is
+          # where the policy itself is documented).
+          #
+          # A "real" TODO/FIXME is preceded by a comment marker (`//`, `#`,
+          # `/*`). Requiring that prefix avoids false-positives on stdlib
+          # identifiers like `context.TODO()` and `runtime.FIXME` etc.
+          #
+          # Excludes this workflow file (ci.yml) because it contains the regex
+          # literals for the very strings we're searching for.
+          bad=$(git grep -nE '(//|#|/\*)[[:space:]]*(TODO|FIXME)\b' -- \
+            '*.sh' '*.go' '*.py' '*.js' '*.ts' '*.yaml' '*.yml' '*.toml' \
+            ':!.github/workflows/ci.yml' \
+            | grep -vE '(TODO|FIXME)\(#[0-9]+\)' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Found TODO/FIXME without an issue reference"
+            echo "$bad" | sed 's/^/  /'
+            echo
+            echo 'Policy: every TODO and FIXME comment must reference a GitHub issue.'
+            echo 'Format: TODO(#42): short description'
+            echo 'See CONTRIBUTING.md for the full policy.'
+            exit 1
+          fi
+          echo 'All TODO comments reference issues.'
+
   # The single check branch protection can require for this workflow. Needs every
   # job above and runs even when one fails; skipped jobs count as passed.
   # Layout matches repo-tooling 6.1.1's gate job.
   ci:
     runs-on: ubuntu-latest
-    needs: [shellcheck, compose-validate]
+    needs: [shellcheck, compose-validate, test, lint, snapshot, todo-check]
     if: always()
     permissions: {}
     steps:

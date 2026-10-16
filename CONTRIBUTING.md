@@ -66,7 +66,7 @@ When iterating on review feedback, just push again — auto-merge stays queued a
 
 ## TODOs link to issues
 
-Every `TODO` and `FIXME` comment in source code must reference a GitHub issue. CI enforces this via [`.github/workflows/todo-check.yml`](.github/workflows/todo-check.yml).
+Every `TODO` and `FIXME` comment in source code must reference a GitHub issue. CI enforces this via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 **Format:**
 
