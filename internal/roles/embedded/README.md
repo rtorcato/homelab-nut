@@ -18,7 +18,7 @@ After editing any script in `/scripts/`, run:
 make embed-sync
 ```
 
-CI (`.github/workflows/go-ci.yml`) runs the sync and fails if it
+CI (`.github/workflows/ci.yml`) runs the sync and fails if it
 produces a diff, so drift can't land on `main`.
 
 ## Files

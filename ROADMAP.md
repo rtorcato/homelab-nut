@@ -58,7 +58,7 @@ homelab-nut/
 ├── scripts/                         # existing bash scripts (called by roles in v1)
 ├── docs/
 ├── examples/                        # inventory examples + Grafana dashboard
-├── .github/workflows/               # ci, release, todo-check
+├── .github/workflows/               # ci, docs-deploy, release
 ├── go.mod
 └── Makefile
 ```
@@ -195,7 +195,7 @@ Goal: drop bash dependency on remote hosts, support more platforms.
 # TODO(#42): handle multi-UPS hosts
 ```
 
-Enforced by `.github/workflows/todo-check.yml`. Local pre-commit hook optional.
+Enforced by `.github/workflows/ci.yml`. Local pre-commit hook optional.
 
 Why: comments rot, issues survive. Anyone reading the code can click through to the conversation, see who's working on it, and reproduce the discussion.
 

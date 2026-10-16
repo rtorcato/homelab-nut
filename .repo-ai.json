@@ -11,5 +11,5 @@
   "busyMinutes": 10,
   "idleMinutes": 30,
   "dependabotStallMinutes": 30,
-  "ciWorkflow": "go-ci.yml"
+  "ciWorkflow": "ci.yml"
 }
