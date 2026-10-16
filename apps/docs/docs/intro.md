@@ -8,24 +8,26 @@ title: Getting Started
 `homelab-nut` is a CLI + TUI for wiring up [Network UPS Tools (NUT)](https://networkupstools.org/) across a homelab — monitor your UPS, push notifications when power events happen, and gracefully shut everything down when the battery runs low.
 
 :::info Status
-The Go CLI is in **alpha** ([v0.1.0-alpha](https://github.com/rtorcato/homelab-nut/releases/tag/v0.1.0-alpha)). You can write and inspect an inventory today; SSH-based fleet apply lands in v0.2 (Phase 2). See the [Roadmap](./roadmap.md) for status.
+The Go CLI is in **beta** ([v0.2.0-beta](https://github.com/rtorcato/homelab-nut/releases/tag/v0.2.0-beta)). You can define and inspect an inventory, and `homelab-nut apply` sets up NUT across your fleet over SSH. See the [Roadmap](./roadmap.md) for status.
 :::
 
 ## Install
 
-Download the binary for your platform from the [latest release](https://github.com/rtorcato/homelab-nut/releases/latest) and unpack it on `$PATH`:
+Download the binary for your platform from the [newest release](https://github.com/rtorcato/homelab-nut/releases) and unpack it on `$PATH`:
 
 ```bash
-# macOS / Linux — substitute your arch (x86_64, arm64)
-OS=$(uname -s | tr A-Z a-z)
-ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH=arm64
-curl -L "https://github.com/rtorcato/homelab-nut/releases/latest/download/homelab-nut_*_${OS}_${ARCH}.tar.gz" \
+OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH=arm64
+# Resolve the newest release tag (pre-1.0 builds are pre-releases, which the
+# /releases/latest endpoint skips — so pull the tag from the API instead).
+TAG=$(curl -fsSL https://api.github.com/repos/rtorcato/homelab-nut/releases \
+  | grep -m1 '"tag_name"' | cut -d'"' -f4); VER=${TAG#v}
+curl -fL "https://github.com/rtorcato/homelab-nut/releases/download/${TAG}/homelab-nut_${VER}_${OS}_${ARCH}.tar.gz" \
   | tar -xz homelab-nut
 sudo install homelab-nut /usr/local/bin/
 homelab-nut version
 ```
 
-Homebrew tap and `install.sh` are coming in Phase 4.
+Homebrew tap and `install.sh` are coming in [Phase 4 (#5)](https://github.com/rtorcato/homelab-nut/issues/5).
 
 ## Quick tour
 
@@ -88,6 +90,6 @@ Five roles cover the surface:
 
 ## What ships today
 
-The bash scripts in [`scripts/`](https://github.com/rtorcato/homelab-nut/tree/main/scripts) remain the working path for actually setting up NUT on machines. The Go CLI today handles inventory definition + inspection; remote setup via `homelab-nut apply` lands in v0.2.
+The bash scripts in [`scripts/`](https://github.com/rtorcato/homelab-nut/tree/main/scripts) do the actual NUT setup on each machine, and the CLI's roles wrap them. The Go CLI handles inventory definition, inspection, and remote setup over SSH via `homelab-nut apply` (since v0.2.0-beta).
 
 The [main README](https://github.com/rtorcato/homelab-nut#quick-start) has the current bash-based Quick Start.
