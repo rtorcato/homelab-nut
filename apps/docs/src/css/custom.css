@@ -537,6 +537,54 @@ body {
 	color: var(--hn-text-muted);
 }
 
+/* ---------- Motion (DESIGN.md "Motion", #161) ---------- */
+/* CodeBlock's class names are hashed, so match on the local name. `svg` keeps
+   [class*="copyButtonIcon"] off the copyButtonIcons wrapper. */
+svg[class*="copyButtonIcon"] {
+	transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+svg[class*="copyButtonSuccessIcon"] {
+	color: var(--hn-accent);
+	transform: translate(-50%, -50%) scale(0.6);
+	transition:
+		transform 120ms cubic-bezier(0.2, 0, 0, 1),
+		opacity 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+[class*="copyButtonCopied"] svg[class*="copyButtonIcon"] {
+	transform: none;
+}
+
+[class*="copyButtonCopied"] svg[class*="copyButtonSuccessIcon"] {
+	transition:
+		transform 200ms cubic-bezier(0.2, 0, 0, 1),
+		opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+	/* Start once the copy icon is fading, so the two don't overlap. */
+	transition-delay: 75ms;
+}
+
+/* Infima already slides the sidebar; retime it: 200ms close, 250ms open. */
+.navbar-sidebar,
+.navbar-sidebar__backdrop {
+	transition-duration: 200ms;
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.navbar-sidebar--show .navbar-sidebar,
+.navbar-sidebar--show .navbar-sidebar__backdrop {
+	transition-duration: 250ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	svg[class*="copyButtonIcon"],
+	svg[class*="copyButtonSuccessIcon"],
+	.navbar-sidebar,
+	.navbar-sidebar__backdrop {
+		transition: none !important;
+	}
+}
+
 /* ---------- Mobile (Infima's breakpoint) ---------- */
 @media (max-width: 996px) {
 	.hn-section {
