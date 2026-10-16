@@ -227,39 +227,10 @@ else
     log_warn "Run: upsdrvctl -D start  to debug"
 fi
 
-# Print credentials
-echo ""
-echo "=============================================="
-echo -e "${GREEN}NUT Server Setup Complete!${NC}"
-echo "=============================================="
-echo ""
-echo "UPS Name: $UPS_NAME"
-echo ""
-echo "Generated Credentials (SAVE THESE!):"
-echo "----------------------------------------------"
-echo "Admin User:      $ADMIN_USER"
-echo "Admin Password:  $ADMIN_PASS"
-echo ""
-echo "Monitor User:    $MONITOR_USER"
-echo "Monitor Pass:    $MONITOR_PASS"
-echo ""
-echo "Remote User:     upsmon_remote"
-echo "Remote Pass:     $REMOTE_PASS"
-echo "----------------------------------------------"
-echo ""
-echo "Test command:    upsc $UPS_NAME@localhost"
-echo "Remote access:   upsc $UPS_NAME@$(hostname -I | awk '{print $1}')"
-echo ""
-echo "For remote clients, use:"
-echo "  Server: $(hostname -I | awk '{print $1}')"
-echo "  Port:   3493"
-echo "  User:   upsmon_remote"
-echo "  Pass:   $REMOTE_PASS"
-echo ""
-
 # Save credentials to file
 CREDS_FILE="/root/nut-credentials.txt"
-cat > $CREDS_FILE << EOF
+# umask 077 so the file is never world-readable, even before the chmod
+(umask 077; cat > "$CREDS_FILE") << EOF
 NUT Server Credentials
 Generated: $(date)
 ======================
@@ -277,5 +248,26 @@ Server IP:      $(hostname -I | awk '{print $1}')
 Port:           3493
 UPS Name:       $UPS_NAME
 EOF
-chmod 600 $CREDS_FILE
-log_info "Credentials saved to $CREDS_FILE"
+chmod 600 "$CREDS_FILE"
+
+# Print summary. Passwords stay in $CREDS_FILE only, so they never land in
+# terminal scrollback or captured SSH/CI output.
+echo ""
+echo "=============================================="
+echo -e "${GREEN}NUT Server Setup Complete!${NC}"
+echo "=============================================="
+echo ""
+echo "UPS Name: $UPS_NAME"
+echo ""
+echo "Credentials saved to $CREDS_FILE (mode 600, root only)."
+echo "View them with: sudo cat $CREDS_FILE  (or scripts/show-credentials.sh)"
+echo ""
+echo "Test command:    upsc $UPS_NAME@localhost"
+echo "Remote access:   upsc $UPS_NAME@$(hostname -I | awk '{print $1}')"
+echo ""
+echo "For remote clients, use:"
+echo "  Server: $(hostname -I | awk '{print $1}')"
+echo "  Port:   3493"
+echo "  User:   upsmon_remote"
+echo "  Pass:   see 'Remote Pass' in $CREDS_FILE"
+echo ""
