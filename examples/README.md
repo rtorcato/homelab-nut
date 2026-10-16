@@ -13,7 +13,7 @@ or run `homelab-nut init` to generate one interactively.
 
 ## Prometheus / Grafana
 
-Drop-in configuration snippets for scraping `nut-exporter` with Prometheus and visualising it in Grafana. See [`docs/prometheus-grafana.md`](../docs/prometheus-grafana.md) for the full how-to.
+Drop-in configuration snippets for scraping `nut-exporter` with Prometheus and visualising it in Grafana. See [`apps/docs/docs/guides/prometheus-grafana.md`](../apps/docs/docs/guides/prometheus-grafana.md) for the full how-to.
 
 ## Contents
 

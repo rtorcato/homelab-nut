@@ -14,7 +14,7 @@ Browse the raw metrics any time:
 curl -s http://<host>:9199/ups_metrics?ups=myups | head -40
 ```
 
-The dashboard ([`examples/grafana/dashboards/nut-overview.json`](../examples/grafana/dashboards/nut-overview.json)) uses these:
+The dashboard ([`examples/grafana/dashboards/nut-overview.json`](https://github.com/rtorcato/homelab-nut/blob/main/examples/grafana/dashboards/nut-overview.json)) uses these:
 
 | Metric | Type | Notes |
 |---|---|---|
@@ -51,7 +51,7 @@ Confirm it's working:
 curl -s 'http://prom:9090/api/v1/query?query=network_ups_tools_battery_charge' | jq .
 ```
 
-A snippet you can copy lives at [`examples/prometheus/prometheus.yml`](../examples/prometheus/prometheus.yml).
+A snippet you can copy lives at [`examples/prometheus/prometheus.yml`](https://github.com/rtorcato/homelab-nut/blob/main/examples/prometheus/prometheus.yml).
 
 ---
 
@@ -60,7 +60,7 @@ A snippet you can copy lives at [`examples/prometheus/prometheus.yml`](../exampl
 The fastest path:
 
 1. **Dashboards → New → Import**
-2. **Upload JSON file** → pick [`examples/grafana/dashboards/nut-overview.json`](../examples/grafana/dashboards/nut-overview.json)
+2. **Upload JSON file** → pick [`examples/grafana/dashboards/nut-overview.json`](https://github.com/rtorcato/homelab-nut/blob/main/examples/grafana/dashboards/nut-overview.json)
 3. When prompted, select your **Prometheus** datasource
 4. Click **Import**
 
@@ -116,7 +116,7 @@ docker compose -f observability-stack.yml up -d
 # Prometheus: http://localhost:9090
 ```
 
-The provisioning files in [`examples/grafana/provisioning/`](../examples/grafana/) auto-add the Prometheus datasource and load `nut-overview.json` on first boot — no UI clicks needed.
+The provisioning files in [`examples/grafana/provisioning/`](https://github.com/rtorcato/homelab-nut/tree/main/examples/grafana/provisioning) auto-add the Prometheus datasource and load `nut-overview.json` on first boot — no UI clicks needed.
 
 > If `nut-exporter` runs on a different host than this compose stack, edit `examples/prometheus/prometheus.yml` to use its real address (`<host>:9199`) instead of the in-network DNS name.
 
