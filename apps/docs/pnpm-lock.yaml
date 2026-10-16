@@ -49,8 +49,8 @@ importers:
         specifier: ^1.61.0
         version: 1.61.0
       '@rtorcato/repo-tooling':
-        specifier: ^6.0.0
-        version: 6.0.0(@biomejs/biome@2.5.15)(@types/node@25.9.3)(tslib@2.8.1)(typescript@5.6.3)
+        specifier: ^6.1.1
+        version: 6.1.1(@biomejs/biome@2.5.15)(@types/node@25.9.3)(tslib@2.8.1)(typescript@5.6.3)
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.17
@@ -1782,8 +1782,8 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@rtorcato/repo-tooling@6.0.0':
-    resolution: {integrity: sha512-zReKrcSvdVof8yMvLv6kZH2pwm07zeiTLLZxlOXC0DOhTaPuU5jthOMtb3k3YZtONrCN2w2Y8gt34qURl9x83Q==}
+  '@rtorcato/repo-tooling@6.1.1':
+    resolution: {integrity: sha512-gMt5zfBK40s00T8DvrRRMydQFTfSbcJjd4Rj42NimJrlnRZ2iasGpsNtCGB/J/IsWyKhjJUCaoNCgkzMbI4bkA==}
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -3725,6 +3725,9 @@ packages:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
     engines: {node: '>=6'}
     hasBin: true
+
+  jsonc-parser@3.3.1:
+    resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
 
   jsonfile@6.2.1:
     resolution: {integrity: sha512-zwOTdL3rFQ/lRdBnntKVOX6k5cKJwEc1HdilT71BWEu7J41gXIB2MRp+vxduPSwZJPWBxEzv4yH1wYLJGUHX4Q==}
@@ -7697,7 +7700,7 @@ snapshots:
 
   '@docusaurus/theme-translations@3.10.1':
     dependencies:
-      fs-extra: 11.3.5
+      fs-extra: 11.4.1
       tslib: 2.8.1
 
   '@docusaurus/tsconfig@3.10.1': {}
@@ -8410,13 +8413,14 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@rtorcato/repo-tooling@6.0.0(@biomejs/biome@2.5.15)(@types/node@25.9.3)(tslib@2.8.1)(typescript@5.6.3)':
+  '@rtorcato/repo-tooling@6.1.1(@biomejs/biome@2.5.15)(@types/node@25.9.3)(tslib@2.8.1)(typescript@5.6.3)':
     dependencies:
       chalk: 6.0.1
       commander: 15.0.0
       diff: 9.0.0
       fs-extra: 11.4.1
       inquirer: 14.2.3(@types/node@25.9.3)
+      jsonc-parser: 3.3.1
     optionalDependencies:
       '@biomejs/biome': 2.5.15
       tslib: 2.8.1
@@ -10443,6 +10447,8 @@ snapshots:
   json-schema-traverse@1.0.0: {}
 
   json5@2.2.3: {}
+
+  jsonc-parser@3.3.1: {}
 
   jsonfile@6.2.1:
     dependencies:
