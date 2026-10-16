@@ -9,16 +9,23 @@
 // or via `make docs-cli`. The generated files are tracked so the docs
 // site builds without a Go toolchain — only regenerated when the CLI
 // surface changes.
+//
+// The page layout follows DESIGN.md ("CLI reference pages"). A command
+// with subcommands (e.g. `inventory`) gets its own folder, so the sidebar
+// groups it without anyone editing sidebars.ts. Slugs stay flat
+// (/cli/homelab-nut_inventory_edit) whatever the folder.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/rtorcato/homelab-nut/internal/cli"
-	"github.com/spf13/cobra/doc"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -33,35 +40,181 @@ func main() {
 }
 
 func run() error {
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		return fmt.Errorf("mkdir %s: %w", outDir, err)
-	}
-
-	// We need the same command tree the binary uses. cli.Execute() runs the
-	// tree; cli has no exported constructor today, so we build one here that
-	// mirrors what Execute does. If the cli API grows a public NewRoot or
-	// similar, switch to that.
 	root := cli.NewRootForDocs(cli.BuildInfo{Version: "vX.Y.Z"})
-
-	// Strip the cwd from "see also" links and rewrite cross-refs to suit
-	// Docusaurus (where slugs live without the .md suffix).
-	linkHandler := func(name string) string {
-		base := strings.TrimSuffix(name, ".md")
-		return "./" + base
+	// The whole folder is generated, so start clean: a renamed or removed
+	// command must not leave a stale page behind (and a duplicate slug).
+	if err := os.RemoveAll(outDir); err != nil {
+		return fmt.Errorf("clear %s: %w", outDir, err)
 	}
-	filePrepender := func(filename string) string {
-		// Cobra's auto-generated files are missing front-matter; add a tiny
-		// header so Docusaurus uses our preferred sidebar order.
-		base := filepath.Base(filename)
-		title := strings.TrimSuffix(base, ".md")
-		title = strings.ReplaceAll(title, "_", " ")
-		return fmt.Sprintf("---\ntitle: %s\nslug: /cli/%s\n---\n\n", title, strings.TrimSuffix(base, ".md"))
+	if err := generate(root, outDir); err != nil {
+		return err
 	}
-
-	if err := doc.GenMarkdownTreeCustom(root, outDir, filePrepender, linkHandler); err != nil {
-		return fmt.Errorf("generate markdown: %w", err)
-	}
-
 	fmt.Printf("Wrote CLI reference to %s\n", outDir)
 	return nil
+}
+
+// generate writes root's page into dir and recurses into its subcommands.
+func generate(root *cobra.Command, dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", dir, err)
+	}
+	if err := writePage(root, filepath.Join(dir, slug(root)+".md"), 0); err != nil {
+		return err
+	}
+	return generateChildren(root, dir)
+}
+
+func generateChildren(parent *cobra.Command, dir string) error {
+	for i, c := range children(parent) {
+		pos := i + 1
+		if len(children(c)) == 0 {
+			if err := writePage(c, filepath.Join(dir, slug(c)+".md"), pos); err != nil {
+				return err
+			}
+			continue
+		}
+		// Group: Docusaurus uses a folder's index.md as the category's page.
+		sub := filepath.Join(dir, c.Name())
+		if err := os.MkdirAll(sub, 0o755); err != nil {
+			return fmt.Errorf("mkdir %s: %w", sub, err)
+		}
+		cat, err := json.MarshalIndent(map[string]any{
+			"label":     c.Name(),
+			"position":  pos,
+			"className": "hn-cli",
+		}, "", "  ")
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(sub, "_category_.json"), append(cat, '\n'), 0o644); err != nil {
+			return err
+		}
+		if err := writePage(c, filepath.Join(sub, "index.md"), 0); err != nil {
+			return err
+		}
+		if err := generateChildren(c, sub); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// children returns the subcommands that get a page, in cobra's order.
+func children(c *cobra.Command) []*cobra.Command {
+	var out []*cobra.Command
+	for _, sc := range c.Commands() {
+		if sc.IsAvailableCommand() && !sc.IsAdditionalHelpTopicCommand() {
+			out = append(out, sc)
+		}
+	}
+	return out
+}
+
+// slug is cobra's file name, kept so existing /cli/<slug> URLs still work.
+func slug(c *cobra.Command) string {
+	return strings.ReplaceAll(c.CommandPath(), " ", "_")
+}
+
+// shortName drops the root prefix: "homelab-nut inventory validate" →
+// "inventory validate".
+func shortName(c *cobra.Command) string {
+	if !c.HasParent() {
+		return c.Name()
+	}
+	return strings.TrimPrefix(c.CommandPath(), c.Root().Name()+" ")
+}
+
+func writePage(c *cobra.Command, path string, pos int) error {
+	if err := os.WriteFile(path, []byte(page(c, pos)), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	return nil
+}
+
+func page(c *cobra.Command, pos int) string {
+	var b strings.Builder
+	// Command labels are mono in the sidebar (hn-cli); Overview is not.
+	label, classLine := c.Name(), "sidebar_class_name: hn-cli\n"
+	if !c.HasParent() {
+		label, classLine = "Overview", ""
+	}
+	fmt.Fprintf(&b, "---\ntitle: %s\nsidebar_label: %s\nsidebar_position: %d\n%sslug: /cli/%s\n---\n\n",
+		c.CommandPath(), label, pos, classLine, slug(c))
+
+	fmt.Fprintf(&b, "# `%s`\n\n", c.CommandPath())
+	if c.Short != "" {
+		b.WriteString(c.Short + "\n\n")
+	}
+	if c.Long != "" {
+		b.WriteString(strings.TrimSpace(c.Long) + "\n\n")
+	}
+
+	usage := ""
+	switch {
+	case c.Runnable():
+		usage = c.UseLine()
+	case c.HasAvailableSubCommands():
+		usage = c.CommandPath() + " [command]"
+	}
+	if usage != "" {
+		fmt.Fprintf(&b, "## Usage\n\n```\n%s\n```\n\n", usage)
+	}
+
+	if c.Example != "" {
+		fmt.Fprintf(&b, "## Examples\n\n```\n%s\n```\n\n", strings.TrimRight(c.Example, "\n"))
+	}
+
+	flagTable(&b, "Flags", c.NonInheritedFlags())
+	flagTable(&b, "Inherited flags", c.InheritedFlags())
+
+	var see []*cobra.Command
+	if c.HasParent() {
+		see = append(see, c.Parent())
+	}
+	see = append(see, children(c)...)
+	if len(see) > 0 {
+		b.WriteString("## See also\n\n")
+		for _, s := range see {
+			fmt.Fprintf(&b, "- [%s](./%s)\n", shortName(s), slug(s))
+		}
+		b.WriteString("\n")
+	}
+	return strings.TrimRight(b.String(), "\n") + "\n"
+}
+
+// flagTable writes a "## <title>" section with one row per visible flag,
+// leaving out -h/--help. It writes nothing when no flag is left.
+func flagTable(b *strings.Builder, title string, fs *pflag.FlagSet) {
+	var rows []string
+	fs.VisitAll(func(f *pflag.Flag) {
+		if f.Hidden || f.Name == "help" {
+			return
+		}
+		name := "--" + f.Name
+		if f.Shorthand != "" {
+			name = "-" + f.Shorthand + ", " + name
+		}
+		typ := f.Value.Type()
+		if typ == "bool" {
+			typ = "" // the mockup leaves a bool's type blank; its default says it
+		} else {
+			typ = "`" + typ + "`"
+		}
+		def := "—"
+		if f.DefValue != "" && f.DefValue != "[]" {
+			def = "`" + f.DefValue + "`"
+		}
+		_, usage := pflag.UnquoteUsage(f)
+		rows = append(rows, fmt.Sprintf("| `%s` | %s | %s | %s |", name, typ, def, cell(usage)))
+	})
+	if len(rows) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "## %s\n\n| Flag | Type | Default | Description |\n|---|---|---|---|\n%s\n\n", title, strings.Join(rows, "\n"))
+}
+
+// cell makes text safe inside a markdown table cell.
+func cell(s string) string {
+	s = strings.ReplaceAll(s, "|", `\|`)
+	return strings.Join(strings.Fields(s), " ")
 }
