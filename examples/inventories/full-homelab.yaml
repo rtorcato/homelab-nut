@@ -15,7 +15,7 @@
 # shutdown_daemon precedence: a host's own block wins; otherwise the root-level
 # block below applies; otherwise the built-in 50% / 30s.
 #
-# The exporter role publishes Prometheus metrics — see docs/prometheus-grafana.md
+# The exporter role publishes Prometheus metrics — see apps/docs/docs/guides/prometheus-grafana.md
 # and examples/grafana/ for a ready-made dashboard.
 #
 # Validate:  homelab-nut inventory validate -i examples/inventories/full-homelab.yaml
