@@ -123,6 +123,21 @@ These pages come from `cmd/gen-docs`. Change the generator, not the generated `.
 - **Mobile hero:** the mascot goes above the wordmark at 190px wide. The status chip is hidden, and the CTAs are full width.
 - **Content width:** 1160px max for home sections, with 32px side padding (20px on mobile).
 
+## Motion
+
+Keep motion rare: it should only show that something changed state. There are two transitions, both CSS only (homelab-nut#161). Don't add a motion library.
+
+| Where | What moves | Timing |
+|---|---|---|
+| Copy button (hero install line and every code block) | The success check scales 0.6 → 1 and fades in, coloured `--hn-accent`. The copy icon fades out. | 200ms in, 120ms out |
+| Mobile menu (below 996px) | `.navbar-sidebar` slides with `transform`, and its backdrop fades | 250ms open, 200ms close |
+
+- **Easing:** `cubic-bezier(0.2, 0, 0, 1)` for both.
+- **Only `transform` and `opacity` animate.** Never width, height, top or left.
+- **Use what Docusaurus already has:** the CodeBlock icon swap and Infima's sidebar slide. Restyle them with attribute selectors (`[class*="copyButtonSuccessIcon"]`) instead of swizzling.
+- **Reduced motion:** under `prefers-reduced-motion: reduce` there are no transitions. The icon swaps instantly and the menu appears in place.
+- **Not in this scope:** animated mascot, page transitions, scroll effects. A Lottie walnut for the 404 and empty states can come later, once the full-colour source exists.
+
 ## Accessibility
 
 - AA contrast for all text in both themes (see the table above). Focus rings stay visible: don't remove Infima's outline.
