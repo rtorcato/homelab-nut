@@ -5,9 +5,9 @@ import { themes as prismThemes } from 'prism-react-renderer'
 const config: Config = {
 	title: 'homelab-nut',
 	tagline: 'Network UPS Tools, set up from your laptop.',
-	favicon: 'img/favicon.svg',
+	favicon: 'img/favicon.ico',
 
-	url: 'https://rtorcato.github.io',
+	url: 'https://docs.torcato.dev',
 	baseUrl: '/homelab-nut/',
 
 	organizationName: 'rtorcato',
@@ -84,7 +84,7 @@ const config: Config = {
 			disableSwitch: false,
 			respectPrefersColorScheme: false,
 		},
-		image: 'img/og.png',
+		image: 'img/social-card.png',
 		navbar: {
 			title: 'homelab-nut',
 			logo: {
