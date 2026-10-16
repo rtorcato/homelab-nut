@@ -350,7 +350,7 @@ $ homelab-nut version -o json
 
 ## Inventory schema
 
-Documented end-to-end in [docs/intro.md](docs/intro.md) and the [docs site](https://rtorcato.github.io/homelab-nut/docs/intro). Quick reference for AI agents writing inventory files:
+Documented end-to-end in [docs/intro.md](docs/intro.md) and the [docs site](https://docs.torcato.dev/homelab-nut/docs/intro). Quick reference for AI agents writing inventory files:
 
 ```yaml
 hosts:

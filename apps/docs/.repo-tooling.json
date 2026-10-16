@@ -27,8 +27,8 @@
       "securityAutomation": false,
       "bundler": "none",
       "docs": {
-        "url": "https://rtorcato.github.io/homelab-nut/",
-        "deploy": "github"
+        "url": "https://docs.torcato.dev/homelab-nut/",
+        "deploy": "cloudflare"
       }
     },
     "writtenBy": "@rtorcato/repo-tooling@6.0.0",

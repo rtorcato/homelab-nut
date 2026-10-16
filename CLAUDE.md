@@ -104,7 +104,7 @@ scripts/                     # canonical bash scripts (the "wrap" side of wrap-t
 ├── services/battery-shutdown.sh
 └── remote-host/{deploy,shutdown}.sh
 
-apps/docs/                   # Docusaurus site (deployed to GitHub Pages)
+apps/docs/                   # Docusaurus site (docs.torcato.dev/homelab-nut, Cloudflare)
 examples/                    # homelab-nut.yaml + Grafana dashboard
 docker/                      # Docker compose (nut-exporter + nut-webgui)
 .github/workflows/           # CI: Go CI, shellcheck CI, TODO check, docs deploy, release
@@ -158,7 +158,7 @@ gh issue create --title "..." --label "phase-N,area/..." --milestone "..." --bod
 | What's open / in-flight right now? | [TODOS.md](TODOS.md) (regenerate with `make todos`) |
 | How do contributors propose changes? | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | How do AI agents *use* the tool? | [AGENTS.md](AGENTS.md) |
-| Full CLI reference with subcommand schemas | [Docs site](https://rtorcato.github.io/homelab-nut/docs/cli) |
+| Full CLI reference with subcommand schemas | [Docs site](https://docs.torcato.dev/homelab-nut/docs/cli) |
 | Skill: GitHub PR workflow conventions | `~/.claude/skills/github-pr-workflow/SKILL.md` (in dotfiles) |
 
 ---
