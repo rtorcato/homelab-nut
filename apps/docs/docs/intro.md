@@ -19,8 +19,10 @@ Download the binary for your platform from the [newest release](https://github.c
 OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] && ARCH=arm64
 # Resolve the newest release tag (pre-1.0 builds are pre-releases, which the
 # /releases/latest endpoint skips — so pull the tag from the API instead).
+# awk reads the whole response; an early-exit filter like `grep -m1` would close
+# the pipe mid-download and make curl print a write error.
 TAG=$(curl -fsSL https://api.github.com/repos/rtorcato/homelab-nut/releases \
-  | grep -m1 '"tag_name"' | cut -d'"' -f4); VER=${TAG#v}
+  | awk -F'"' '/"tag_name"/ && !tag {tag = $4} END {print tag}'); VER=${TAG#v}
 curl -fL "https://github.com/rtorcato/homelab-nut/releases/download/${TAG}/homelab-nut_${VER}_${OS}_${ARCH}.tar.gz" \
   | tar -xz homelab-nut
 sudo install homelab-nut /usr/local/bin/
