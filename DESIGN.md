@@ -34,7 +34,7 @@ Keep the existing `--hn-*` names in `src/css/custom.css`. Fix the values and add
 | `--hn-accent-ui` | `#047857` | `#10b981` | Primary button fill, status chips |
 | `--hn-on-accent` | `#ffffff` | `#06231a` | Text on `--hn-accent-ui` |
 | `--hn-accent-soft` | `rgba(5,150,105,.10)` | `rgba(16,185,129,.12)` | Mark tile, step numbers, active sidebar item |
-| `--hn-mascot` | `#b45309` | `#fb923c` | Amber: the alpha pill, flag types, caution admonitions |
+| `--hn-mascot` | `#b45309` | `#fb923c` | Amber: the release pill, flag types, caution admonitions |
 | `--hn-code-bg` | `#f3f6f9` | `#0f1c2e` | Inline code, install line, code blocks |
 | `--hn-comment` | `#5b6675` | `#8b9bc4` | Prism comment tokens |
 | `--hn-glow` | `none` | `0 0 60px -12px rgba(16,185,129,.45)` | Primary button only |
@@ -75,8 +75,8 @@ If you add a colour, compute its ratio for both themes before you use it for tex
 |---|---|---|
 | Navbar | `docusaurus.config.ts` `navbar` | Items: **Docs** (`/docs/intro`), **Guides** (`/docs/guides`), **CLI** (`/docs/cli`), **Roadmap**, then GitHub ↗, the theme toggle and search on the right. Give Docs `activeBaseRegex: '^/docs/(intro\|contributing)'` so it lights up only on those pages. Guides and CLI match their own paths. |
 | Navbar mark | `static/img/logo.svg` (+ `srcDark`) | The nut mark below, 20px glyph centred in a 32px rounded tile (radius 9px, `--hn-accent-soft` fill, 1px border at 35% accent). It's the same tile in both themes; only the colours swap. The mark is vertically centred on the title text. |
-| Hero | `src/pages/index.tsx` | Two-column grid (1.1fr / 0.9fr, gap 40px), max 1160px wide, padding 72px 32px 56px. Left: alpha pill, wordmark H1, lead, sub, CTAs, install line. Right: the mascot with a status chip. A soft radial glow of `--hn-accent-soft` sits behind it, top right. No banner image. |
-| Alpha pill | Hero | Mono 13px, a 999px radius, `--hn-surface` fill and border. Text: **beta** (amber, 600) · a link to the [newest release](https://github.com/rtorcato/homelab-nut/releases). No version in the text, so it doesn't go stale on each tag. |
+| Hero | `src/pages/index.tsx` | Two-column grid (1.1fr / 0.9fr, gap 40px), max 1160px wide, padding 72px 32px 56px. Left: release pill, wordmark H1, lead, sub, CTAs, install line. Right: the mascot with a status chip. A soft radial glow of `--hn-accent-soft` sits behind it, top right. No banner image. |
+| Release pill | Hero | Mono 13px, a 999px radius, `--hn-surface` fill and border. Text: **beta** (amber, 600) · a link to the [newest release](https://github.com/rtorcato/homelab-nut/releases). No version in the text, so it doesn't go stale on each tag. |
 | CTAs | Hero | **Get started →** (primary: `--hn-accent-ui` fill, `--hn-on-accent` text, `--hn-glow`) → `/docs/intro`. **Read the guides** (secondary: surface fill and border) → `/docs/guides`. Min height 46px, radius 10px, 16px/600. Below 996px, both stretch to equal widths. |
 | Install line | Hero | `$ homelab-nut init` in mono 14px on `--hn-code-bg`, radius 10px, max 520px wide, with a copy button. The `$` is accent-coloured and isn't copied. Docusaurus' `CodeBlock` copy button is fine. |
 | Mascot | Hero | `static/img/mascot-ascii-dark.png` (green on transparent) and `mascot-ascii-light.png` (dark green on transparent), made from the repo's `image 2.png`. Show them with `ThemedImage` **wrapped in a div**, because `ThemedImage` forces `display: initial` over any class on the image. Width `min(400px, 100%)`. Dark mode only: `drop-shadow(0 0 24px rgba(16,185,129,.25))`. `alt=""` (decorative). |
