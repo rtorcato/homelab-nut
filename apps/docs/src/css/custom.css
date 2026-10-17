@@ -243,6 +243,12 @@ body {
 	font-weight: 600;
 }
 
+/* Grow the tap target without changing the pill's layout. */
+.hn-pill a {
+	padding-block: 15px;
+	margin-block: -15px;
+}
+
 .hn-wordmark {
 	font-size: clamp(44px, 6vw, 72px);
 	font-weight: 800;
