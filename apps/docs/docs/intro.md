@@ -8,7 +8,7 @@ title: Getting Started
 `homelab-nut` is a CLI + TUI for wiring up [Network UPS Tools (NUT)](https://networkupstools.org/) across a homelab — monitor your UPS, push notifications when power events happen, and gracefully shut everything down when the battery runs low.
 
 :::info Status
-The Go CLI is in **beta** ([v0.2.0-beta](https://github.com/rtorcato/homelab-nut/releases/tag/v0.2.0-beta)). You can define and inspect an inventory, and `homelab-nut apply` sets up NUT across your fleet over SSH. See the [Roadmap](./roadmap.md) for status.
+The Go CLI is in **beta** (see the [newest release](https://github.com/rtorcato/homelab-nut/releases)). You can define and inspect an inventory, and `homelab-nut apply` sets up NUT across your fleet over SSH. See the [Roadmap](./roadmap.md) for status.
 :::
 
 ## Install

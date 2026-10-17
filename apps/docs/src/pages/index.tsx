@@ -6,9 +6,6 @@ import Layout from '@theme/Layout'
 import ThemedImage from '@theme/ThemedImage'
 import type { ReactNode } from 'react'
 
-// Update with each release (DESIGN.md › Alpha pill).
-const RELEASE_NOTE = 'v0.1.0 · fleet apply lands in v0.2'
-
 const iconProps = {
 	width: 24,
 	height: 24,
@@ -109,7 +106,8 @@ export default function Home(): ReactNode {
 					<div className="hn-hero__inner">
 						<div className="hn-hero__copy">
 							<span className="hn-pill">
-								<b>alpha</b> {RELEASE_NOTE}
+								<b>beta</b> ·{' '}
+								<a href="https://github.com/rtorcato/homelab-nut/releases">newest release</a>
 							</span>
 							<h1 className="hn-wordmark">
 								homelab-<span>nut</span>
