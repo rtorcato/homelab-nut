@@ -104,7 +104,21 @@ body {
 .navbar {
 	border-bottom: 1px solid var(--hn-border);
 	box-shadow: none;
+}
+
+/* The blur sits on a pseudo-element: a backdrop-filter on .navbar clips the
+   fixed mobile drawer to the navbar's height. */
+.navbar::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
 	backdrop-filter: blur(8px);
+}
+
+/* Opaque, so the page doesn't show through the mobile drawer. */
+.navbar-sidebar {
+	background-color: var(--ifm-background-color);
 }
 
 .navbar__logo {
