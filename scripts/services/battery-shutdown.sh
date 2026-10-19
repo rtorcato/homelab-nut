@@ -39,7 +39,11 @@ CONF="/etc/ups-battery-shutdown.conf"
 # owned by the service user, so the unprivileged daemon can write its locks here.
 # One lock per node (lock-<sanitized-host>) so staged targets fire independently.
 LOCK_DIR="/run/ups-battery-shutdown"
-SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes"
+# accept-new (OpenSSH 7.6+): a target's host key is recorded in the daemon user's
+# ~/.ssh/known_hosts the first time it is seen, and a CHANGED key is refused, so a LAN
+# host that answers for a target's address later cannot capture the shutdown request.
+# A re-imaged target needs its old entry dropped: ssh-keygen -R <host> (as the daemon user).
+SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o BatchMode=yes"
 
 # Defaults (overridden by conf file)
 UPS="myups@localhost"

@@ -223,7 +223,7 @@ run_setup() {
     echo
     for NODE in $REMOTE_NODES; do
         info "Testing SSH to $NODE..."
-        SSH_ERR=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+        SSH_ERR=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
                       -o BatchMode=yes "$NODE" 'echo ok' 2>&1) && SSH_OK=1 || SSH_OK=0
         if [[ "$SSH_OK" -eq 1 ]]; then
             ok "SSH to $NODE works"
@@ -235,6 +235,7 @@ run_setup() {
             echo "    2. SSH running? ssh $NODE"
             echo "    3. Key in place? check ~/.ssh/authorized_keys on $NODE"
             echo "    4. Non-standard port? add -p <port> to SSH_OPTS in $DAEMON_DST after setup"
+            echo "    5. Host key changed (re-imaged host)? ssh-keygen -R ${NODE##*@}, then re-run"
             err "Fix SSH access to $NODE and re-run: sudo $0 setup"
         fi
     done
