@@ -223,6 +223,8 @@ run_setup() {
     echo
     for NODE in $REMOTE_NODES; do
         info "Testing SSH to $NODE..."
+        # Intentionally run as root: this legacy unit has no User=, so the daemon runs as
+        # root and reads /root/.ssh/known_hosts. Testing here seeds the file it checks.
         SSH_ERR=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
                       -o BatchMode=yes "$NODE" 'echo ok' 2>&1) && SSH_OK=1 || SSH_OK=0
         if [[ "$SSH_OK" -eq 1 ]]; then
