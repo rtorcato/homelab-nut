@@ -223,11 +223,9 @@ run_setup() {
     echo
     for NODE in $REMOTE_NODES; do
         info "Testing SSH to $NODE..."
-        # Run as the daemon user so the host key lands in its known_hosts (the
-        # file the daemon checks at outage time), not in root's.
-        SSH_ERR=$(sudo -u "$DAEMON_USER" ssh -i "$SSH_KEY" \
-                      -o UserKnownHostsFile="${DAEMON_HOME}/.ssh/known_hosts" \
-                      -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
+        # Intentionally run as root: this legacy unit has no User=, so the daemon runs as
+        # root and reads /root/.ssh/known_hosts. Testing here seeds the file it checks.
+        SSH_ERR=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \
                       -o BatchMode=yes "$NODE" 'echo ok' 2>&1) && SSH_OK=1 || SSH_OK=0
         if [[ "$SSH_OK" -eq 1 ]]; then
             ok "SSH to $NODE works"
@@ -239,7 +237,7 @@ run_setup() {
             echo "    2. SSH running? ssh $NODE"
             echo "    3. Key in place? check ~/.ssh/authorized_keys on $NODE"
             echo "    4. Non-standard port? add -p <port> to SSH_OPTS in $DAEMON_DST after setup"
-            echo "    5. Host key changed (re-imaged host)? sudo -u $DAEMON_USER ssh-keygen -R ${NODE##*@} -f ${DAEMON_HOME}/.ssh/known_hosts, then re-run"
+            echo "    5. Host key changed (re-imaged host)? ssh-keygen -R ${NODE##*@}, then re-run"
             err "Fix SSH access to $NODE and re-run: sudo $0 setup"
         fi
     done
@@ -253,9 +251,7 @@ run_setup() {
         fi
         RUSER="${NODE%%@*}"
         info "Checking passwordless sudo on $NODE..."
-        if sudo -u "$DAEMON_USER" ssh -i "$SSH_KEY" \
-               -o UserKnownHostsFile="${DAEMON_HOME}/.ssh/known_hosts" \
-               -o BatchMode=yes -o ConnectTimeout=10 \
+        if ssh -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=10 \
                "$NODE" 'sudo -n shutdown --help' &>/dev/null; then
             ok "sudo shutdown works on $NODE"
         else
