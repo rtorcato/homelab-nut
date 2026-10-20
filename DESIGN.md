@@ -149,4 +149,4 @@ Keep motion rare: it should only show that something changed state. There are tw
 
 - **Mascot:** the walnut from the README art. The ASCII version (`image 2.png`) is what ships now. A full-colour transparent version needs either the original source file or generated art, and isn't in this scope.
 - **Accent:** emerald `#10b981` (dark) / `#047857` (light). Brand-kit assets (homelab-nut#140) should use `--accent 10b981` and the nut mark instead of the bolt.
-- `cover.png` stays in the repo for the README, but the site doesn't use it.
+- `cover.png` stays in the repo, but neither the site nor the README uses it. The README leads with the brand-kit banner (homelab-nut#182).
