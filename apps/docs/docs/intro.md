@@ -94,4 +94,4 @@ Five roles cover the surface:
 
 The bash scripts in [`scripts/`](https://github.com/rtorcato/homelab-nut/tree/main/scripts) do the actual NUT setup on each machine, and the CLI's roles wrap them. The Go CLI handles inventory definition, inspection, and remote setup over SSH via `homelab-nut apply`.
 
-The [main README](https://github.com/rtorcato/homelab-nut#quick-start) has the current bash-based Quick Start.
+To run the scripts by hand without the CLI, see [Direct bash scripts](https://github.com/rtorcato/homelab-nut#direct-bash-scripts--what-apply-runs-underneath) in the README.
