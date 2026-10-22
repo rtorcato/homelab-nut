@@ -10,6 +10,8 @@
 > [!WARNING]
 > **Alpha, early preview.** homelab-nut is pre-1.0. The CLI, the inventory schema and the JSON output can change between releases. Test it on a non-critical setup before you rely on it to shut machines down.
 
+[<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="40">](https://buymeacoffee.com/rtorcato)
+
 **Network UPS Tools, set up from your laptop.**
 
 One CLI to wire every machine to your UPS: live status, alerts when the power drops, and a clean shutdown before the battery runs out. Use the TUI yourself, or the `-o json` subcommands from scripts and AI agents.
