@@ -169,6 +169,9 @@ func newInventoryEditCmd() *cobra.Command {
 		Short: "Open the inventory in $EDITOR and re-validate on save",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := requireTTY(os.Stdin, "inventory edit"); err != nil {
+				return err
+			}
 			path := inventoryPath(cmd)
 
 			editor := os.Getenv("EDITOR")
