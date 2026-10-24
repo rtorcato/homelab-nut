@@ -76,7 +76,7 @@ Every subcommand respects the global `--inventory` / `-i` flag and the `--output
 
 ### `homelab-nut init`
 
-Interactive bootstrap of `homelab-nut.yaml`. **Always interactive** — uses `charmbracelet/huh` forms. Don't invoke from non-interactive contexts (no `-o json` mode); use `inventory edit` or write the YAML directly instead.
+Interactive bootstrap of `homelab-nut.yaml`. **Always interactive** — uses `charmbracelet/huh` forms. Don't invoke from non-interactive contexts (no `-o json` mode): when stdin isn't a terminal it exits `1` before any form opens. Write the YAML directly instead. `inventory edit` and the bare TUI need a terminal too.
 
 **Applies by default.** After writing the inventory, `init` immediately runs `apply` (whole fleet, auto-approved) so a fresh setup is actually live — an unapplied inventory is just inert YAML. Pass `--no-apply` to write the file only (hosts not reachable yet, or review-before-apply), then run `homelab-nut apply` later.
 
