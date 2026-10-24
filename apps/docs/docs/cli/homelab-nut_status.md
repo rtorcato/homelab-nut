@@ -19,6 +19,9 @@ With -o json, output is a JSON array suitable for AI agents and scripts.
 With --watch, the command redraws every --interval until Ctrl+C; in JSON
 mode each tick emits a fresh JSON array on its own line (NDJSON-friendly).
 
+Without --watch, exits 2 when any host can't be read, so scripts and cron
+can catch an unreachable UPS server.
+
 ## Usage
 
 ```

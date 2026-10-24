@@ -290,7 +290,7 @@ $ homelab-nut status -o json
   - `--timeout` — per-host TCP connect + read deadline (default 2s).
   - `-o text|json` — output format.
 - **Read-only** — opens TCP connections to upsd; never SSHes anywhere.
-- **Exit:** 0 in all cases; per-host failures surface in the `error` field rather than the exit code. Use `jq -e 'all(.error == null)'` if you want a fleet-wide pass/fail signal.
+- **Exit:** `0` when every host was read, `2` when any row has an `error` (the output still lists every host). `--watch` keeps running and doesn't use the exit code.
 
 **Status code reference.** NUT emits short tokens for `ups.status`; multiple tokens may be combined with spaces.
 
