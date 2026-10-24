@@ -31,3 +31,24 @@ func TestDefaultInventoryPath(t *testing.T) {
 		}
 	})
 }
+
+func TestRequireTerminalRejectsNonTerminal(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	defer w.Close()
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer devNull.Close()
+
+	// /dev/null is a character device but not a terminal, so it must fail too.
+	for name, f := range map[string]*os.File{"pipe": r, "/dev/null": devNull} {
+		if err := requireTerminal(f); err == nil {
+			t.Errorf("%s: expected an error for non-terminal stdin", name)
+		}
+	}
+}

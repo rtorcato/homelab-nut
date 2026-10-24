@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/rtorcato/homelab-nut/internal/forms"
 	"github.com/rtorcato/homelab-nut/internal/inventory"
 	"github.com/spf13/cobra"
@@ -27,6 +28,9 @@ This subcommand and the TUI's empty-state 'i' shortcut run the same forms —
 use whichever fits your context.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := requireTerminal(os.Stdin); err != nil {
+				return err
+			}
 			path := inventoryPath(cmd)
 			noApply, _ := cmd.Flags().GetBool("no-apply")
 			return runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path, noApply)
@@ -34,6 +38,15 @@ use whichever fits your context.`,
 	}
 	cmd.Flags().Bool("no-apply", false, "write the inventory but don't apply it (generate only — run apply later)")
 	return cmd
+}
+
+// requireTerminal rejects non-interactive stdin. The huh forms need a
+// terminal, and with stdin at EOF (e.g. </dev/null) they loop instead of exiting.
+func requireTerminal(f *os.File) error {
+	if term.IsTerminal(f.Fd()) {
+		return nil
+	}
+	return errors.New("init is interactive: run it from a terminal (piped or redirected stdin is not supported)")
 }
 
 func runInit(stdin io.Reader, stdout, stderr io.Writer, path string, noApply bool) error {
