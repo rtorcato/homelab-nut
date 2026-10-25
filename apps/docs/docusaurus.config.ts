@@ -47,6 +47,8 @@ const config: Config = {
 		'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap',
 	],
 
+	clientModules: ['./src/clientModules/escape-closes-mobile-menu.ts'],
+
 	presets: [
 		[
 			'classic',
