@@ -317,6 +317,7 @@ Dry-runs the shutdown chain across the fleet **without powering anything off**. 
 
 - a script path (first token contains `/`, e.g. `~/shutdown.sh`) must exist and be executable (`test -x`; `~/` is expanded via `$HOME` to mirror how the daemon runs it);
 - an inline command (e.g. `poweroff`, or the first token of `shutdown -h now`) must be found in `PATH` (`command -v`).
+- a command that starts with `sudo` (e.g. `sudo /sbin/shutdown -h now`) must be allowed without a password (`sudo -n -l <command>`). Checking only that `sudo` is in `PATH` would pass on almost every host while a missing NOPASSWD rule breaks the real shutdown. `-u` / `-g` are kept in the check; other sudo flags are dropped.
 
 ```
 $ homelab-nut shutdown test -o json
@@ -330,9 +331,9 @@ $ homelab-nut shutdown test -o json
   - `host` — inventory host name.
   - `command` — the resolved shutdown command (empty if the host has none configured).
   - `ok` — `true` if the command is runnable on that host.
-  - `error` — `omitempty`; the specific failure (`no shutdown command configured`, an SSH error, `command not found in PATH: …`, or `script not found or not executable: …`).
+  - `error` — `omitempty`; the specific failure (`no shutdown command configured`, an SSH error, `command not found in PATH: …`, `script not found or not executable: …`, or `sudo needs a password or no rule allows: …`).
 - **Hosts without `shutdown-target`** in their roles are skipped. An inventory with no shutdown-target hosts prints a notice (text) / `[]` (json) and exits 0.
-- **Never powers anything off** — it only runs `test -x` / `command -v`.
+- **Never powers anything off** — it only runs `test -x` / `command -v` / `sudo -n -l`.
 - **Flags:** `-o text|json`.
 - **Exit:** 0 if every checked host passes; `3` if any host fails the check (per-host detail is in each result's `error`).
 
