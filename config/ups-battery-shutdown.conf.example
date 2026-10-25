@@ -33,6 +33,7 @@ REMOTE_SHUTDOWN_CMD=~/shutdown.sh
 # Optional: log file path. Date is appended automatically.
 LOG_FILE=/var/log/ups-battery-shutdown.log
 
-# Optional: Slack incoming-webhook URL for power-event notifications.
+# Optional: Slack incoming-webhook URL for power-event notifications, and an
+# alert when the UPS stays unreadable (shutdown protection is off).
 # Leave unset to disable Slack alerts.
 # SLACK_WEBHOOK=https://hooks.slack.com/services/T.../B.../...
