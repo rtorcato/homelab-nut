@@ -288,7 +288,7 @@ This hop does *not* involve your laptop. The `shutdown-daemon` host SSHes out on
 | Command | the target's `shutdown.command`, shell-quoted into `/etc/ups-battery-shutdown.conf` |
 | Host keys | `StrictHostKeyChecking=accept-new`: a target's key is recorded in `/var/lib/homelab-nut/.ssh/known_hosts` on first contact, and a changed key is refused |
 
-**Host keys are trust-on-first-use.** Record each target's key now, as the daemon user, so the first contact is not during an outage: `sudo -u homelab-nut ssh -i /var/lib/homelab-nut/.ssh/id_ed25519_ups <user>@<host> true`. If a target is re-imaged its key changes and the daemon refuses it (the shutdown fails) until you drop the old entry: `sudo -u homelab-nut ssh-keygen -R <host> -f /var/lib/homelab-nut/.ssh/known_hosts`.
+**Host keys are trust-on-first-use.** `apply` records each target's key in the daemon user's `known_hosts` as it installs, so the first contact is not during an outage; the fingerprint is logged, so check it is yours. A target that is down at that moment only warns: re-run `apply` once it is up, or record it by hand as the daemon user: `sudo -u homelab-nut ssh -i /var/lib/homelab-nut/.ssh/id_ed25519_ups <user>@<host> true`. If a target is re-imaged its key changes and the daemon refuses it (the shutdown fails) until you drop the old entry: `sudo -u homelab-nut ssh-keygen -R <host> -f /var/lib/homelab-nut/.ssh/known_hosts`.
 
 **`apply` prints that public key but does not install it.** You add it to each target's `~/.ssh/authorized_keys` yourself, for the user named in the inventory. Skip this and the daemon fails at trigger time with `Permission denied (publickey)` — with the UPS already on battery, which is the worst possible moment to discover it. Verify it up front:
 
