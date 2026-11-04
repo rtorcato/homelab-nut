@@ -28,6 +28,10 @@ const (
 	// nothing to remove — every artifact was already absent. A no-op
 	// success that scripts can distinguish from "removed something".
 	ExitNothingToRemove = 4
+
+	// ExitUnhealthy signals that doctor found shutdown protection
+	// broken: a failed check, or a host it couldn't probe.
+	ExitUnhealthy = 5
 )
 
 // exitCodeError carries a specific process exit code while signalling that

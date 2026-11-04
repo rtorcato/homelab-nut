@@ -101,4 +101,7 @@ func TestExitCodesAreStable(t *testing.T) {
 	if ExitNothingToRemove != 4 {
 		t.Errorf("ExitNothingToRemove = %d, want 4", ExitNothingToRemove)
 	}
+	if ExitUnhealthy != 5 {
+		t.Errorf("ExitUnhealthy = %d, want 5", ExitUnhealthy)
+	}
 }

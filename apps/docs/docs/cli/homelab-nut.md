@@ -33,6 +33,7 @@ homelab-nut
 - [apply](./homelab-nut_apply)
 - [backup](./homelab-nut_backup)
 - [detect](./homelab-nut_detect)
+- [doctor](./homelab-nut_doctor)
 - [init](./homelab-nut_init)
 - [inventory](./homelab-nut_inventory)
 - [logs](./homelab-nut_logs)

@@ -23,6 +23,7 @@ For humans, the TUI is the front door: run `homelab-nut` and follow the keybindi
 | `2` | Network / SSH error (unreachable host, auth fail, mid-command drop) | Yes — usually transient |
 | `3` | Apply partial failure (some hosts OK, some failed) | Maybe — inspect the per-host result; failed hosts may need a fix |
 | `4` | Uninstall ran cleanly but removed nothing (every artifact already absent) | No — already in the desired state |
+| `5` | `doctor` found shutdown protection broken (a failed check, or a host it couldn't probe) | No — fix the reported host first |
 
 Defined in `internal/cli/exit.go` and locked in by `TestExitCodesAreStable`.
 
@@ -251,6 +252,29 @@ $ homelab-nut backup pi-rack -o json
 - **Default path:** `./backups/<host>-<timestamp>.tar.gz` (UTC timestamp). Override with `--out <dir>` or, for a single host, `--out <file>.tar.gz`.
 - **Exit:** 0 success, 1 validation/flag error, 3 partial failure (a host's pull errored — see its `error` field).
 - **Flags:** `--all`, `--out/-O <dir|file.tar.gz>` (default `./backups`), `--include-secrets`, `--concurrency N`. Note: `-o` is the output **format** (text/json); the destination is `-O`/`--out`.
+
+### `homelab-nut doctor [host]`
+
+Asks "is shutdown protection working right now?" for every host with the `nut-server`, `nut-client` or `shutdown-daemon` role. Probes each over SSH, from that host's own point of view, so a client pointed at a decommissioned server fails even though `upsmon` is `active` and `plan` shows no drift.
+
+```
+$ homelab-nut doctor -o json
+[
+  {
+    "host": "nas",
+    "checks": [
+      {"check": "nut.conf mode", "ok": true, "detail": "MODE=\"netclient\" (client-only host; want netclient)"},
+      {"check": "monitor myups@192.0.2.10", "ok": false, "detail": "no answer from the NUT server (upsc -l exited 1)"}
+    ]
+  },
+  {"host": "office", "error": "ssh office: connection refused"}
+]
+```
+
+- **Checks:** `nut.conf mode` matches the roles (nut-server: `netserver`/`standalone`; client-only: `netclient`); `upsmon running`; one `monitor <ups@host>` per `MONITOR` line (server answers `upsc -l` and lists that UPS name); `shutdown daemon` service active and `daemon UPS read` (the daemon's configured `UPS=` returns `ups.status` right now).
+- **JSON schema:** array of `{ host, checks?: [{check, ok, detail?}], error? }`. `error` is set (and `checks` omitted) when the host could not be probed.
+- **Exit:** 0 all checks pass, 1 inventory/host-argument error, 5 any check failed or host unprobeable — so cron/CI can page on it.
+- **Flags:** `--timeout` (per-host, default 30s). Hosts are probed concurrently.
 
 ### `homelab-nut status`
 
