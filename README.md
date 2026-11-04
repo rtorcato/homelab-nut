@@ -145,6 +145,7 @@ In the repo:
 | `1` | Validation / config error (user-fixable) |
 | `2` | Network / SSH error (transient — retry-safe) |
 | `3` | Apply partial failure (some hosts OK, some failed) |
+| `5` | `doctor` found shutdown protection broken |
 
 ### UPS status codes
 
