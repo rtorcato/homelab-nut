@@ -427,3 +427,15 @@ func TestShutdownDaemon_EmbeddedScriptsReadable(t *testing.T) {
 		}
 	}
 }
+
+// A daemon left polling a UPS name the server does not serve is the #132
+// failure, so Detect must compare the config's UPS= line, not just check
+// that the file exists.
+func TestShutdownDaemon_DetectCmdChecksUPSRef(t *testing.T) {
+	cmd := shutdownDaemonDetectCmd("server-rack-ups@localhost")
+	for _, marker := range []string{"grep -qxF 'UPS=server-rack-ups@localhost' /etc/ups-battery-shutdown.conf", "5) echo OK", "0) echo MISSING"} {
+		if !strings.Contains(cmd, marker) {
+			t.Errorf("shutdownDaemonDetectCmd missing %q:\n%s", marker, cmd)
+		}
+	}
+}

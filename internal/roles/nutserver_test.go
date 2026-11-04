@@ -2,6 +2,9 @@ package roles
 
 import (
 	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -104,9 +107,59 @@ func TestNutServer_DetectCmdShape(t *testing.T) {
 	// The detect script is run on the remote — verify the structure
 	// without actually executing it. Catches regressions where the
 	// command no longer covers all three states.
-	for _, marker := range []string{"OK", "PARTIAL", "MISSING", "upsd", "nut-server", "systemctl"} {
-		if !strings.Contains(detectCmd, marker) {
-			t.Errorf("detectCmd missing %q:\n%s", marker, detectCmd)
+	cmd := detectCmd("server-rack-ups")
+	for _, marker := range []string{"OK", "PARTIAL", "MISSING", "upsd", "nut-server", "systemctl", "upsc 'server-rack-ups@localhost'"} {
+		if !strings.Contains(cmd, marker) {
+			t.Errorf("detectCmd missing %q:\n%s", marker, cmd)
 		}
+	}
+}
+
+// TestNutServer_DetectCmdRuns executes detectCmd against stub upsd,
+// systemctl and upsc binaries. A running nut-server unit whose upsd
+// cannot serve the inventory's UPS is the #132 failure: it must read
+// PARTIAL so plan shows drift, never OK.
+func TestNutServer_DetectCmdRuns(t *testing.T) {
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not available")
+	}
+	cases := []struct {
+		name               string
+		upsd, active, upsc bool
+		want               string
+	}{
+		{"not installed", false, false, false, "MISSING"},
+		{"unit inactive (MODE=netclient)", true, false, false, "PARTIAL"},
+		{"unit active, upsc fails", true, true, false, "PARTIAL"},
+		{"unit active, upsc reads", true, true, true, "OK"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			stub := func(name string, ok bool) {
+				code := "1"
+				if ok {
+					code = "0"
+				}
+				if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\nexit "+code+"\n"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.upsd {
+				stub("upsd", true)
+			}
+			stub("systemctl", tc.active)
+			stub("upsc", tc.upsc)
+			c := exec.Command(bash, "-c", detectCmd("server-rack-ups"))
+			c.Env = []string{"PATH=" + dir}
+			out, err := c.Output()
+			if err != nil {
+				t.Fatalf("detectCmd: %v", err)
+			}
+			if got := strings.TrimSpace(string(out)); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
