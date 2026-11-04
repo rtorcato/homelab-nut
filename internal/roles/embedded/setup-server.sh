@@ -215,16 +215,26 @@ systemctl restart nut-server.service
 sleep 2
 systemctl restart nut-monitor.service
 
-# Test connection
+# Test connection. The driver can take a few seconds to claim a USB UPS,
+# so retry before deciding. A failed read fails the whole run (after the
+# credentials are saved below): units report active even when upsd serves
+# nothing, so a warning here is how a host ends up unprotected (#132).
 log_info "Testing UPS connection..."
-sleep 3
-if upsc $UPS_NAME@localhost &>/dev/null; then
+UPS_OK=0
+for _ in 1 2 3 4 5; do
+    sleep 3
+    if upsc "$UPS_NAME@localhost" ups.status &>/dev/null; then
+        UPS_OK=1
+        break
+    fi
+done
+if [ "$UPS_OK" -eq 1 ]; then
     log_info "✓ UPS connection successful!"
     echo ""
-    upsc $UPS_NAME@localhost | head -20
+    upsc "$UPS_NAME@localhost" | head -20
 else
-    log_warn "Could not connect to UPS. Check driver and USB connection."
-    log_warn "Run: upsdrvctl -D start  to debug"
+    log_error "upsc cannot read $UPS_NAME@localhost. Check the driver and USB connection."
+    log_error "Debug with: journalctl -u nut-server -u 'nut-driver*'  and  upsdrvctl -D start"
 fi
 
 # Save credentials to file
@@ -271,3 +281,8 @@ echo "  Port:   3493"
 echo "  User:   upsmon_remote"
 echo "  Pass:   see 'Remote Pass' in $CREDS_FILE"
 echo ""
+
+if [ "$UPS_OK" -ne 1 ]; then
+    log_error "Setup finished but the UPS is not readable, so nothing will shut down on power loss."
+    exit 1
+fi

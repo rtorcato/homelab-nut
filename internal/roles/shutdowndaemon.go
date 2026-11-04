@@ -132,25 +132,31 @@ func upsRefFromInventory(daemonHost *inventory.Host) string {
 	return "myups@localhost"
 }
 
-// shutdownDaemonDetectCmd checks for all four install artefacts.
-const shutdownDaemonDetectCmd = `set -e
+// shutdownDaemonDetectCmd checks for the four install artefacts, plus
+// that the config polls upsRef. A daemon left polling a UPS name the
+// server does not serve is running but useless (#132), so a stale UPS=
+// line counts as drift that apply rewrites.
+func shutdownDaemonDetectCmd(upsRef string) string {
+	return `set -e
 PARTIAL=0
 COUNT=0
 [ -x /usr/local/bin/ups-battery-shutdown ] && COUNT=$((COUNT+1))
 [ -f /etc/ups-battery-shutdown.conf ] && COUNT=$((COUNT+1))
+grep -qxF ` + shellQuote("UPS="+upsRef) + ` /etc/ups-battery-shutdown.conf 2>/dev/null && COUNT=$((COUNT+1))
 [ -f /etc/systemd/system/ups-battery-shutdown.service ] && COUNT=$((COUNT+1))
 systemctl is-active --quiet ups-battery-shutdown.service && COUNT=$((COUNT+1))
 case "$COUNT" in
-    4) echo OK ;;
+    5) echo OK ;;
     0) echo MISSING ;;
     *) echo PARTIAL ;;
 esac`
+}
 
 func (shutdownDaemon) Detect(ctx context.Context, conn *ssh.Connection, h *inventory.Host) (State, error) {
 	if conn == nil {
 		return StateUnknown, nil
 	}
-	res, err := conn.Run(ctx, shutdownDaemonDetectCmd)
+	res, err := conn.Run(ctx, shutdownDaemonDetectCmd(upsRefFromInventory(h)))
 	if err != nil {
 		return StateUnknown, fmt.Errorf("detect shutdown-daemon on %s: %w", h.Name, err)
 	}

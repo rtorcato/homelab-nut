@@ -29,17 +29,21 @@ func (nutServer) Applies(h *inventory.Host) bool {
 	return h != nil && h.HasRole(inventory.RoleNUTServer)
 }
 
-// detectCmd is the remote shell snippet Detect runs. Lifted to a
-// package-level constant so unit tests can verify its construction
-// without an SSH connection.
-const detectCmd = `set -e
-if command -v upsd >/dev/null 2>&1 && systemctl is-active --quiet nut-server; then
-    echo OK
-elif command -v upsd >/dev/null 2>&1; then
-    echo PARTIAL
-else
+// detectCmd builds the remote shell snippet Detect runs. A running
+// nut-server unit is not enough: with MODE=netclient it exits 0 and
+// reports inactive, and with a ups.conf name that disagrees with the
+// inventory it runs but serves nothing (#132). So OK also requires
+// upsc to read the inventory's UPS through upsd.
+func detectCmd(upsName string) string {
+	return `set -e
+if ! command -v upsd >/dev/null 2>&1; then
     echo MISSING
+elif systemctl is-active --quiet nut-server && upsc ` + shellQuote(upsName+"@localhost") + ` ups.status >/dev/null 2>&1; then
+    echo OK
+else
+    echo PARTIAL
 fi`
+}
 
 // Detect runs detectCmd on the remote and maps the result to State.
 // A nil connection yields StateUnknown without error (a no-op detect
@@ -48,7 +52,11 @@ func (nutServer) Detect(ctx context.Context, conn *ssh.Connection, h *inventory.
 	if conn == nil {
 		return StateUnknown, nil
 	}
-	res, err := conn.Run(ctx, detectCmd)
+	upsName := ""
+	if h.UPS != nil {
+		upsName = h.UPS.Name
+	}
+	res, err := conn.Run(ctx, detectCmd(upsName))
 	if err != nil {
 		return StateUnknown, fmt.Errorf("detect nut-server on %s: %w", h.Name, err)
 	}
@@ -89,6 +97,7 @@ func (r nutServer) Plan(ctx context.Context, conn *ssh.Connection, h *inventory.
 		fmt.Sprintf("configure ups.conf for UPS %q (driver %s, auto-detected via nut-scanner when possible)", h.UPS.Name, h.UPS.Driver),
 		"generate /root/nut-credentials.txt + upsd.users (random passwords)",
 		"enable + start nut-server, nut-driver, nut-client systemd units",
+		fmt.Sprintf("verify upsc reads %s@localhost (apply fails if it cannot)", h.UPS.Name),
 	}
 	return d, nil
 }
