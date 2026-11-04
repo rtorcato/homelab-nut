@@ -59,7 +59,7 @@ conf=$(rd /etc/nut/upsmon.conf)
 if [ -z "$conf" ]; then echo "UPSMONCONF|unreadable"; fi
 printf '%s\n' "$conf" | awk '$1=="MONITOR"{print $2}' | sort -u | while read -r sys; do
   [ -n "$sys" ] || continue
-  out=$(timeout 5 upsc -l "${sys#*@}" 2>/dev/null); rc=$?
+  out=$(timeout 5 upsc -l -- "${sys#*@}" 2>/dev/null); rc=$?
   echo "LIST|$sys|$rc"
   printf '%s\n' "$out" | while read -r name; do [ -n "$name" ] && echo "UPS|$sys|$name"; done
 done
@@ -67,7 +67,7 @@ if [ -f /etc/ups-battery-shutdown.conf ]; then
   ref=$(rd /etc/ups-battery-shutdown.conf | sed -n 's/^UPS=//p' | tail -1 | tr -d "\"'")
   ref=${ref:-myups@localhost}
   if systemctl is-active --quiet ups-battery-shutdown; then echo "DAEMON|active"; else echo "DAEMON|inactive"; fi
-  st=$(timeout 5 upsc "$ref" ups.status 2>/dev/null); rc=$?
+  st=$(timeout 5 upsc -- "$ref" ups.status 2>/dev/null); rc=$?
   echo "DAEMONREAD|$ref|$rc|$st"
 else
   echo "DAEMON|noconf"
