@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"text/tabwriter"
 	"time"
+	"unicode"
 
 	"github.com/rtorcato/homelab-nut/internal/doctor"
 	"github.com/rtorcato/homelab-nut/internal/inventory"
@@ -139,7 +141,7 @@ func printDoctorResults(w io.Writer, results []doctor.Result) error {
 	fmt.Fprintln(tw, "HOST\tCHECK\tRESULT\tDETAIL")
 	for _, r := range results {
 		if r.Error != "" {
-			fmt.Fprintf(tw, "%s\t-\tFAIL\t%s\n", r.Host, r.Error)
+			fmt.Fprintf(tw, "%s\t-\tFAIL\t%s\n", printable(r.Host), printable(r.Error))
 			continue
 		}
 		for _, c := range r.Checks {
@@ -147,8 +149,22 @@ func printDoctorResults(w io.Writer, results []doctor.Result) error {
 			if !c.OK {
 				res = "FAIL"
 			}
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.Host, c.Name, res, c.Detail)
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", printable(r.Host), printable(c.Name), res, printable(c.Detail))
 		}
 	}
 	return tw.Flush()
+}
+
+// printable drops control characters (ESC, CR, tabs, ...) from s. UPS names,
+// MODE, ups.status and probe stderr come from the host or its NUT server, so
+// a hostile one could otherwise send ANSI/OSC sequences that rewrite the
+// terminal or break the table. JSON output needs no help: encoding/json
+// escapes them.
+func printable(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, s)
 }

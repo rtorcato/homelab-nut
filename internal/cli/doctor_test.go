@@ -1,8 +1,11 @@
 package cli
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
+	"github.com/rtorcato/homelab-nut/internal/doctor"
 	"github.com/rtorcato/homelab-nut/internal/inventory"
 )
 
@@ -21,5 +24,27 @@ func TestDoctorTargets(t *testing.T) {
 	}
 	if _, err := doctorTargets(inv, "unifi"); err == nil {
 		t.Error("shutdown-target-only host has nothing to check")
+	}
+}
+
+// A hostile NUT server picks the UPS names doctor prints; escape sequences in
+// them must not reach the terminal.
+func TestPrintDoctorResultsStripsControlChars(t *testing.T) {
+	var buf bytes.Buffer
+	err := printDoctorResults(&buf, []doctor.Result{
+		{Host: "pi", Checks: []doctor.Check{{Name: "monitor ups@pi", Detail: "has: \x1b]0;pwned\x07ok\x1b[2J\r\tx"}}},
+		{Host: "nas", Error: "probe nas: exit 1 (stderr: \x1b[31mred)"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if strings.ContainsAny(out, "\x1b\x07\r") {
+		t.Fatalf("control characters leaked: %q", out)
+	}
+	for _, want := range []string{"]0;pwnedok[2Jx", "[31mred"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output %q missing %q", out, want)
+		}
 	}
 }
