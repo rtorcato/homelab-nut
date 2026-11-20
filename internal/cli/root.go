@@ -52,6 +52,9 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 		// init and edit suspend the TUI, run the relevant flow, then
 		// relaunch the TUI so the user lands back where they started.
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := requireTTY(os.Stdin, "the TUI"); err != nil {
+				return err
+			}
 			path := inventoryPath(cmd)
 			return runTUILoop(cmd, info.Version, path)
 		},
@@ -72,6 +75,7 @@ See https://github.com/rtorcato/homelab-nut/blob/main/ROADMAP.md`,
 	cmd.AddCommand(newBackupCmd())
 	cmd.AddCommand(newStatusCmd())
 	cmd.AddCommand(newDetectCmd())
+	cmd.AddCommand(newDoctorCmd())
 	cmd.AddCommand(newLogsCmd())
 	cmd.AddCommand(newShutdownCmd())
 

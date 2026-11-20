@@ -18,6 +18,8 @@ resolved:
   - a script path (contains '/', e.g. ~/shutdown.sh) must exist and be
     executable (test -x);
   - an inline command (e.g. poweroff) must be found in PATH (command -v).
+  - a command starting with sudo (e.g. sudo /sbin/shutdown -h now) must be
+    allowed without a password (sudo -n -l <command>).
 
 It prints a host / command / result table. With -o json it emits an array
 of {host, command, ok, error}. Exits 3 if any host fails the check.

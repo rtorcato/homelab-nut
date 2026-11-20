@@ -23,6 +23,7 @@ For humans, the TUI is the front door: run `homelab-nut` and follow the keybindi
 | `2` | Network / SSH error (unreachable host, auth fail, mid-command drop) | Yes — usually transient |
 | `3` | Apply partial failure (some hosts OK, some failed) | Maybe — inspect the per-host result; failed hosts may need a fix |
 | `4` | Uninstall ran cleanly but removed nothing (every artifact already absent) | No — already in the desired state |
+| `5` | `doctor` found shutdown protection broken (a failed check, or a host it couldn't probe) | No — fix the reported host first |
 
 Defined in `internal/cli/exit.go` and locked in by `TestExitCodesAreStable`.
 
@@ -76,7 +77,7 @@ Every subcommand respects the global `--inventory` / `-i` flag and the `--output
 
 ### `homelab-nut init`
 
-Interactive bootstrap of `homelab-nut.yaml`. **Always interactive** — uses `charmbracelet/huh` forms. Don't invoke from non-interactive contexts (no `-o json` mode); use `inventory edit` or write the YAML directly instead.
+Interactive bootstrap of `homelab-nut.yaml`. **Always interactive** — uses `charmbracelet/huh` forms. Don't invoke from non-interactive contexts (no `-o json` mode): when stdin isn't a terminal it exits `1` before any form opens. Write the YAML directly instead. `inventory edit` and the bare TUI need a terminal too.
 
 **Applies by default.** After writing the inventory, `init` immediately runs `apply` (whole fleet, auto-approved) so a fresh setup is actually live — an unapplied inventory is just inert YAML. Pass `--no-apply` to write the file only (hosts not reachable yet, or review-before-apply), then run `homelab-nut apply` later.
 
@@ -252,6 +253,29 @@ $ homelab-nut backup pi-rack -o json
 - **Exit:** 0 success, 1 validation/flag error, 3 partial failure (a host's pull errored — see its `error` field).
 - **Flags:** `--all`, `--out/-O <dir|file.tar.gz>` (default `./backups`), `--include-secrets`, `--concurrency N`. Note: `-o` is the output **format** (text/json); the destination is `-O`/`--out`.
 
+### `homelab-nut doctor [host]`
+
+Asks "is shutdown protection working right now?" for every host with the `nut-server`, `nut-client` or `shutdown-daemon` role. Probes each over SSH, from that host's own point of view, so a client pointed at a decommissioned server fails even though `upsmon` is `active` and `plan` shows no drift.
+
+```
+$ homelab-nut doctor -o json
+[
+  {
+    "host": "nas",
+    "checks": [
+      {"check": "nut.conf mode", "ok": true, "detail": "MODE=\"netclient\" (client-only host; want netclient)"},
+      {"check": "monitor myups@192.0.2.10", "ok": false, "detail": "no answer from the NUT server (upsc -l exited 1)"}
+    ]
+  },
+  {"host": "office", "error": "ssh office: connection refused"}
+]
+```
+
+- **Checks:** `nut.conf mode` matches the roles (nut-server: `netserver`/`standalone`; client-only: `netclient`); `upsmon running`; one `monitor <ups@host>` per `MONITOR` line (server answers `upsc -l` and lists that UPS name); `shutdown daemon` service active and `daemon UPS read` (the daemon's configured `UPS=` returns `ups.status` right now).
+- **JSON schema:** array of `{ host, checks?: [{check, ok, detail?}], error? }`. `error` is set (and `checks` omitted) when the host could not be probed.
+- **Exit:** 0 all checks pass, 1 inventory/host-argument error, 5 any check failed or host unprobeable — so cron/CI can page on it.
+- **Flags:** `--timeout` (per-host, default 30s). Hosts are probed concurrently.
+
 ### `homelab-nut status`
 
 Polls each host with the `nut-server` role over the NUT TCP protocol (port 3493, native Go client — no `upsc` dependency) and reports live UPS state.
@@ -290,7 +314,7 @@ $ homelab-nut status -o json
   - `--timeout` — per-host TCP connect + read deadline (default 2s).
   - `-o text|json` — output format.
 - **Read-only** — opens TCP connections to upsd; never SSHes anywhere.
-- **Exit:** 0 in all cases; per-host failures surface in the `error` field rather than the exit code. Use `jq -e 'all(.error == null)'` if you want a fleet-wide pass/fail signal.
+- **Exit:** `0` when every host was read, `2` when any row has an `error` (the output still lists every host). `--watch` keeps running and doesn't use the exit code.
 
 **Status code reference.** NUT emits short tokens for `ups.status`; multiple tokens may be combined with spaces.
 
@@ -317,6 +341,7 @@ Dry-runs the shutdown chain across the fleet **without powering anything off**. 
 
 - a script path (first token contains `/`, e.g. `~/shutdown.sh`) must exist and be executable (`test -x`; `~/` is expanded via `$HOME` to mirror how the daemon runs it);
 - an inline command (e.g. `poweroff`, or the first token of `shutdown -h now`) must be found in `PATH` (`command -v`).
+- a command that starts with `sudo` (e.g. `sudo /sbin/shutdown -h now`) must be allowed without a password (`sudo -n -l <command>`). Checking only that `sudo` is in `PATH` would pass on almost every host while a missing NOPASSWD rule breaks the real shutdown. `-u` / `-g` are kept in the check; other sudo flags are dropped.
 
 ```
 $ homelab-nut shutdown test -o json
@@ -330,9 +355,9 @@ $ homelab-nut shutdown test -o json
   - `host` — inventory host name.
   - `command` — the resolved shutdown command (empty if the host has none configured).
   - `ok` — `true` if the command is runnable on that host.
-  - `error` — `omitempty`; the specific failure (`no shutdown command configured`, an SSH error, `command not found in PATH: …`, or `script not found or not executable: …`).
+  - `error` — `omitempty`; the specific failure (`no shutdown command configured`, an SSH error, `command not found in PATH: …`, `script not found or not executable: …`, or `sudo needs a password or no rule allows: …`).
 - **Hosts without `shutdown-target`** in their roles are skipped. An inventory with no shutdown-target hosts prints a notice (text) / `[]` (json) and exits 0.
-- **Never powers anything off** — it only runs `test -x` / `command -v`.
+- **Never powers anything off** — it only runs `test -x` / `command -v` / `sudo -n -l`.
 - **Flags:** `-o text|json`.
 - **Exit:** 0 if every checked host passes; `3` if any host fails the check (per-host detail is in each result's `error`).
 

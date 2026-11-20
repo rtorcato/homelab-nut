@@ -23,6 +23,9 @@
 #   REMOTE_THRESHOLDS_B64    base64 of newline-joined "THRESHOLD_<host>=<pct>" per-target
 #                            battery thresholds (staged shutdown); empty = all use THRESHOLD
 #
+# Also records each REMOTE_NODES host key in the daemon user's known_hosts, so the
+# daemon's first SSH to a target is not during an outage.
+#
 # Outputs the daemon's SSH public key on stdout so the caller can
 # distribute it to each shutdown-target's authorized_keys.
 
@@ -131,6 +134,31 @@ if [[ ! -f "$SSH_KEY" ]]; then
 fi
 chown "${DAEMON_USER}:${DAEMON_USER}" "$SSH_KEY" "${SSH_KEY}.pub"
 chmod 600 "$SSH_KEY"
+
+# 3b. Record each target's host key in the DAEMON USER's known_hosts now, so the
+# first contact is not during an outage (the daemon uses accept-new: unseen host =
+# trust on first use). Runs as the daemon user so the entry lands in the file the
+# service reads and is owned by it. The daemon's public key is usually not on the
+# target yet, so the login fails; that is fine, ssh records the host key before it
+# authenticates. An unreachable target only warns: re-run setup once it is up.
+KNOWN_HOSTS="${DAEMON_HOME}/.ssh/known_hosts"
+as_daemon() { runuser -u "$DAEMON_USER" -- "$@"; }
+for NODE in $REMOTE_NODES; do
+    HOST="${NODE##*@}"
+    if as_daemon ssh-keygen -F "$HOST" -f "$KNOWN_HOSTS" >/dev/null 2>&1; then
+        log "host key for $HOST already recorded in $KNOWN_HOSTS"
+        continue
+    fi
+    as_daemon ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o UserKnownHostsFile="$KNOWN_HOSTS" \
+        -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o BatchMode=yes \
+        -o PreferredAuthentications=publickey -- "$NODE" true >/dev/null 2>&1 || true
+    FINGERPRINT="$(as_daemon ssh-keygen -l -F "$HOST" -f "$KNOWN_HOSTS" 2>/dev/null | grep -v '^#' || true)"
+    if [[ -n "$FINGERPRINT" ]]; then
+        log "recorded host key for $HOST (verify it is yours): $FINGERPRINT"
+    else
+        log "WARNING: could not reach $HOST to record its host key; re-run setup once it is up, or the first contact happens during an outage"
+    fi
+done
 
 # 4. Install the systemd unit.
 log "writing $SERVICE_FILE"

@@ -27,6 +27,9 @@ This subcommand and the TUI's empty-state 'i' shortcut run the same forms —
 use whichever fits your context.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := requireTTY(os.Stdin, "init"); err != nil {
+				return err
+			}
 			path := inventoryPath(cmd)
 			noApply, _ := cmd.Flags().GetBool("no-apply")
 			return runInit(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), path, noApply)

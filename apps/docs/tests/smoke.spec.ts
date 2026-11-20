@@ -47,4 +47,24 @@ test.describe('homelab-nut docs site — smoke', () => {
 		await page.getByRole('button', { name: /switch/i }).click()
 		await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 	})
+
+	for (const theme of ['dark', 'light'] as const) {
+		test(`Escape closes the open mobile menu and returns focus to its toggle (${theme}, reduced motion)`, async ({
+			page,
+		}) => {
+			await page.emulateMedia({ reducedMotion: 'reduce' })
+			await page.addInitScript((t) => localStorage.setItem('theme', t), theme)
+			await page.setViewportSize({ width: 375, height: 720 })
+			await page.goto('/homelab-nut/')
+			await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+
+			const toggle = page.locator('.navbar__toggle')
+			await toggle.click()
+			await expect(page.locator('.navbar-sidebar--show')).toBeVisible()
+
+			await page.keyboard.press('Escape')
+			await expect(page.locator('.navbar-sidebar--show')).toHaveCount(0)
+			await expect(toggle).toBeFocused()
+		})
+	}
 })

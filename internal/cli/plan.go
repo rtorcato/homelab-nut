@@ -66,12 +66,23 @@ func printPlanResult(out io.Writer, res *orchestrator.Result) {
 		}
 	}
 	fmt.Fprintln(out)
-	if res.NoOp() {
-		fmt.Fprintln(out, "Plan: no changes — every host is already at target state.")
-		return
+	failed := 0
+	for _, h := range res.Hosts {
+		if h.HasErrors() {
+			failed++
+		}
 	}
 	hosts, actions := summarisePlan(res)
-	fmt.Fprintf(out, "Plan: %d host(s) would change, %d action(s) total.\n", hosts, actions)
+	switch {
+	case failed > 0:
+		// Don't claim "no changes" for hosts that were never reached (#166).
+		fmt.Fprintf(out, "Plan: %d of %d host(s) failed (see errors above); %d host(s) would change, %d action(s) total.\n",
+			failed, len(res.Hosts), hosts, actions)
+	case res.NoOp():
+		fmt.Fprintln(out, "Plan: no changes — every host is already at target state.")
+	default:
+		fmt.Fprintf(out, "Plan: %d host(s) would change, %d action(s) total.\n", hosts, actions)
+	}
 }
 
 // summarisePlan counts hosts with at least one action and total actions.

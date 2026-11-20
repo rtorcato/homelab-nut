@@ -114,6 +114,28 @@ func TestRunStatusSkipsNonServerHosts(t *testing.T) {
 	}
 }
 
+func TestRunStatusExitsNetworkWhenHostUnreachable(t *testing.T) {
+	// Port 1 on loopback refuses the connection straight away.
+	path := writeTempInventory(t, `hosts:
+  - name: office
+    address: 127.0.0.1:1
+    user: pi
+    roles: [nut-server]
+    ups:
+      name: myups
+      driver: usbhid-ups
+`)
+	var out, errBuf bytes.Buffer
+	err := runStatus(context.Background(), &out, &errBuf, path, false,
+		time.Second, time.Second, outputText)
+	if got := ExitCode(err); got != ExitNetwork {
+		t.Fatalf("exit = %d, want %d (err=%v)", got, ExitNetwork, err)
+	}
+	if !strings.Contains(out.String(), "office") {
+		t.Errorf("table should still list the host:\n%s", out.String())
+	}
+}
+
 func writeTempInventory(t *testing.T, yaml string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "homelab-nut.yaml")

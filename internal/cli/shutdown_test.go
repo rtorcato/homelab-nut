@@ -39,6 +39,31 @@ func TestShutdownCheckCmd(t *testing.T) {
 			wantRemote:  `test -x "$HOME"/'shutdown.sh'`,
 			wantFailHas: "not found or not executable",
 		},
+		{
+			name: "sudo checks the rule, not the sudo binary", command: "sudo /sbin/shutdown -h now",
+			wantRemote:  `sudo -n -l '/sbin/shutdown' '-h' 'now' >/dev/null`,
+			wantFailHas: "needs a password or no rule allows: /sbin/shutdown -h now",
+		},
+		{
+			name: "sudo inline binary", command: "sudo poweroff",
+			wantRemote:  `sudo -n -l 'poweroff' >/dev/null`,
+			wantFailHas: "needs a password",
+		},
+		{
+			name: "sudo keeps -u, drops other flags", command: "sudo -n -E -u root -- ~/shutdown.sh",
+			wantRemote:  `sudo -n -u 'root' -l "$HOME"/'shutdown.sh' >/dev/null`,
+			wantFailHas: "no rule allows: ~/shutdown.sh",
+		},
+		{
+			name: "sudo keeps attached -u", command: "sudo -ualice --group=nut poweroff",
+			wantRemote:  `sudo -n '-ualice' '--group=nut' -l 'poweroff' >/dev/null`,
+			wantFailHas: "no rule allows: poweroff",
+		},
+		{
+			name: "sudo with no command fails closed", command: "sudo -n",
+			wantRemote:  `false`,
+			wantFailHas: "no command",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

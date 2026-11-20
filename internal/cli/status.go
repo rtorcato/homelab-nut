@@ -27,7 +27,10 @@ status string (OL, OB, OB LB, …), battery %, load %, and runtime estimate.
 Hosts without the nut-server role are skipped (no live UPS state to read).
 With -o json, output is a JSON array suitable for AI agents and scripts.
 With --watch, the command redraws every --interval until Ctrl+C; in JSON
-mode each tick emits a fresh JSON array on its own line (NDJSON-friendly).`,
+mode each tick emits a fresh JSON array on its own line (NDJSON-friendly).
+
+Without --watch, exits 2 when any host can't be read, so scripts and cron
+can catch an unreachable UPS server.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := inventoryPath(cmd)
@@ -56,7 +59,16 @@ func runStatus(parent context.Context, stdout, stderr io.Writer, path string, wa
 	hosts := inv.HostsWithRole(inventory.RoleNUTServer)
 
 	if !watch {
-		return render(stdout, format, upspoll.Poll(parent, hosts, timeout))
+		rows := upspoll.Poll(parent, hosts, timeout)
+		if err := render(stdout, format, rows); err != nil {
+			return err
+		}
+		for _, r := range rows {
+			if r.Error != "" {
+				return errExit(ExitNetwork)
+			}
+		}
+		return nil
 	}
 
 	// --watch: signal-aware context so Ctrl+C (and SIGTERM) exits cleanly.

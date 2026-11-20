@@ -104,8 +104,15 @@ log "  Nodes:     $REMOTE_NODES"
 log "  Interval:  ${POLL_INTERVAL}s"
 
 FAIL_COUNT=0
-FAIL_WARN=5   # log a warning after this many consecutive failed polls
+FAIL_WARN=5                      # log a warning after this many consecutive failed polls
+FAIL_ALERT=$(( FAIL_WARN * 4 ))  # alert (Slack) once this many polls in a row have failed
+REALERT_SECS=21600               # then re-alert at most every 6h while it stays unreadable
+LAST_ALERT=-1                    # $SECONDS of the last alert; -1 = not alerted this streak
 
+# A failed read means shutdown protection is off. The daemon keeps polling
+# rather than exiting: Restart=on-failure would just restart it every 5s (and
+# re-alert each time), and staying up means protection resumes on its own
+# once reads come back.
 while true; do
     STATUS=$(upsc "$UPS" ups.status 2>/dev/null || echo "")
     CHARGE=$(upsc "$UPS" battery.charge 2>/dev/null || echo "")
@@ -115,10 +122,23 @@ while true; do
         if (( FAIL_COUNT == 1 )) || (( FAIL_COUNT % FAIL_WARN == 0 )); then
             log "WARNING: cannot read UPS data from $UPS (consecutive failures: $FAIL_COUNT)"
         fi
+        if (( FAIL_COUNT >= FAIL_ALERT )) &&
+           { (( LAST_ALERT < 0 )) || (( SECONDS - LAST_ALERT >= REALERT_SECS )); }; then
+            log "ALERT: UPS $UPS unreadable for $FAIL_COUNT polls, shutdown protection is OFF"
+            slack ":rotating_light: *$(hostname)*: cannot read UPS \`$UPS\` ($FAIL_COUNT failed polls). Shutdown protection is OFF."
+            LAST_ALERT=$SECONDS
+        fi
         sleep "$POLL_INTERVAL"
         continue
     fi
+    if (( FAIL_COUNT > 0 )); then
+        log "UPS $UPS readable again after $FAIL_COUNT failed polls"
+        if (( LAST_ALERT >= 0 )); then
+            slack ":white_check_mark: *$(hostname)*: UPS \`$UPS\` readable again. Shutdown protection restored."
+        fi
+    fi
     FAIL_COUNT=0
+    LAST_ALERT=-1
 
     # Clear per-node locks when power is restored so future outages re-trigger.
     if [[ "$STATUS" == *"OL"* ]]; then
